@@ -1,0 +1,208 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-05-30 15:46:58.994409",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "row_no",
+  "parent_fg",
+  "bom_item_code",
+  "column_break_zolz",
+  "sr_no",
+  "description",
+  "qty",
+  "section_break_kkse",
+  "material_type",
+  "length",
+  "thickness",
+  "column_break_jewz",
+  "width",
+  "od",
+  "id",
+  "section_break_ulwi",
+  "gad_mfg",
+  "section_break_ohqb",
+  "is_bought_out",
+  "item_level",
+  "choose_item",
+  "matched_item_list",
+  "column_break_ntcc",
+  "matched_item"
+ ],
+ "fields": [
+  {
+   "fieldname": "row_no",
+   "fieldtype": "Data",
+   "label": "Row No",
+   "read_only": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "parent_fg",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Parent FG",
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "sr_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Sr No",
+   "read_only": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "description",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Description",
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "material_type",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Material Type",
+   "options": "Material Type MW",
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Qty",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "gad_mfg",
+   "fieldtype": "Data",
+   "label": "GAD/MFG",
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "choose_item",
+   "fieldtype": "Button",
+   "in_list_view": 1,
+   "label": "Choose Item"
+  },
+  {
+   "columns": 1,
+   "fieldname": "bom_item_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "BOM Item Code",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_kkse",
+   "fieldtype": "Section Break",
+   "label": "Material Type & Attributes"
+  },
+  {
+   "fieldname": "column_break_jewz",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_ulwi",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_zolz",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_ohqb",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "No",
+   "fieldname": "is_bought_out",
+   "fieldtype": "Select",
+   "label": "Is Bought Out",
+   "options": "Yes\nNo",
+   "read_only": 1
+  },
+  {
+   "fieldname": "matched_item_list",
+   "fieldtype": "Small Text",
+   "label": "Matched Item List",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_ntcc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "columns": 1,
+   "fieldname": "matched_item",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Matched Item ",
+   "read_only": 1
+  },
+  {
+   "default": "Level 2",
+   "fieldname": "item_level",
+   "fieldtype": "Select",
+   "label": "Item Level",
+   "options": "Level 1\nLevel 2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "length",
+   "fieldtype": "Float",
+   "label": "Length",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "thickness",
+   "fieldtype": "Float",
+   "label": "Thickness",
+   "precision": "2"
+  },
+  {
+   "fieldname": "width",
+   "fieldtype": "Float",
+   "label": "Width",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "od",
+   "fieldtype": "Float",
+   "label": "OD",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "id",
+   "fieldtype": "Float",
+   "label": "ID",
+   "precision": "2",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 500,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-06-11 12:35:33.760936",
+ "modified_by": "Administrator",
+ "module": "Mech",
+ "name": "BOM Item Details MW",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

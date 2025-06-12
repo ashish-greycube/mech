@@ -1,0 +1,87 @@
+{
+ "actions": [],
+ "autoname": "field:attribute",
+ "creation": "2025-05-27 10:08:14.959266",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "attribute",
+  "section_break_rqkp",
+  "excel_column_title",
+  "column_break_uvmz",
+  "field_name_in_item_dt",
+  "column_break_unjf",
+  "field_name_in_bom_uploader"
+ ],
+ "fields": [
+  {
+   "fieldname": "attribute",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Attribute",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "excel_column_title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Excel Column Title",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "section_break_rqkp",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_uvmz",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "field_name_in_item_dt",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Field Name In Item Doctype",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "column_break_unjf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "field_name_in_bom_uploader",
+   "fieldtype": "Data",
+   "label": "Field Name In BOM Uploader",
+   "reqd": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-06-12 10:15:14.925625",
+ "modified_by": "Administrator",
+ "module": "Mech",
+ "name": "Attribute MW",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

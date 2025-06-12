@@ -91,6 +91,8 @@ doctype_js = {
 # before_install = "mech.install.before_install"
 # after_install = "mech.install.after_install"
 
+after_migrate = "mech.migrate.after_migrate"
+
 # Uninstallation
 # ------------
 
