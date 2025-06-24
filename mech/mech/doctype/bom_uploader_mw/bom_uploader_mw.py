@@ -4,7 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import cstr
+from frappe.utils import cstr, get_link_to_form
 from frappe.utils.xlsxutils import (
 	build_xlsx_response,
 	read_xlsx_file_from_attached_file,
@@ -44,7 +44,9 @@ class BOMUploaderMW(Document):
 			self.validate_imported_excel(excel_data)
 
 		self.clear_table_data_if_not_attached_file()
-		# self.set_matched_item_in_bom_items()
+		self.set_matched_item_in_bom_items()
+		self.check_if_item_is_bought_out()
+		self.calculate_raw_material_weight()
 
 	###### get connected sales order of item ######
 	@frappe.whitelist()
@@ -192,6 +194,27 @@ class BOMUploaderMW(Document):
 		if not is_equal:
 			frappe.throw(_("In excel row 8 : Table Header Columns Must Be {0}").format(
 					TABLE_HEADERS))
+	
+	#################### ToDo #############################		
+	def validate_parent_fg(self, alphabetic_items, alphanumeric_items):
+		parent_gf_list = []
+		for alpha in alphabetic_items:
+			item_name = alpha.get("parent_fg") + "-" + alpha.get("sr_no")
+			if item_name not in parent_gf_list:
+				parent_gf_list.append(parent_gf_list)
+
+		print(parent_gf_list, "==========parent_gf_list=================")
+
+		error_data = []
+		if len(parent_gf_list) > 0:
+			for row in alphanumeric_items:
+				if row.get("parent_fg") not in parent_gf_list:
+					if row.get("parent_fg") not in error_data:
+						error_data.append(row.get("parent_fg"))
+		
+		if len(error_data) > 0:
+			frappe.throw(_("Following Parent FGs are not exists: <br> {0}").format(",<br>".join((ele if ele != None else "") for ele in error_data)))
+
 
 	def check_in_excel_all_matrial_type_exists(self, excel_table_data):
 		material_type_list = []
@@ -302,41 +325,165 @@ class BOMUploaderMW(Document):
 
 	def set_matched_item_in_bom_items(self):
 		if len(self.bom_item_details_mw) > 0:
+			count = 0
 			for item in self.bom_item_details_mw:
-				if item.item_level == "Level 2" and item.material_type:
+				if item.item_level == "Level 2" and item.material_type and not item.matched_item:
 					field_map = attributes_field_mapping()
 
 					sub_assembly_item_group = frappe.db.get_single_value('Mechwell Setting MW', 'default_item_group_for_sub_assembly')
 					sql = "SELECT name FROM `tabItem` WHERE custom_material_type = '{0}' AND item_group !='{1}' ".format(item.material_type, sub_assembly_item_group)
 					conditions = []
+					near_by_value = {}
 
 					attr_doc = frappe.get_doc('Material Type MW', item.material_type)
-					for att in attr_doc.attributes:
-						att_map = frappe._dict(field_map[att.attribute])
 
-						if att.attribute == 'Sub Assembly Keyword':
-							conditions.append(" ( %({})s like concat('%%', {}, '%%') ) ".format(att_map.field_name_in_bom_uploader, att_map.field_name_in_item_dt))
-						elif att.match_type == '>=':
-							# if len(attr_doc.attributes) == 1:
-							conditions.append(" ( {field_name_in_item_dt} = (select min({field_name_in_item_dt}) from tabItem where {field_name_in_item_dt} >= %({field_name_in_bom_uploader})s) ) ".format(**att_map))
-							# else:
-							# 	conditions.append(" ( {field_name_in_item_dt} = (select min({field_name_in_item_dt}) from tabItem where {field_name_in_item_dt} >= %({field_name_in_bom_uploader})s) OR {field_name_in_item_dt} >=  %({field_name_in_bom_uploader})s ) ".format(**att_map))
-						elif att.match_type == '<=':
-							# if len(attr_doc.attributes) == 1:
-							conditions.append(" ( {field_name_in_item_dt} = (select max({field_name_in_item_dt}) from tabItem where {field_name_in_item_dt} <= %({field_name_in_bom_uploader})s) ) ".format(**att_map))
-							# else:
-							# 	conditions.append(" ( {field_name_in_item_dt} = (select max({field_name_in_item_dt}) from tabItem where {field_name_in_item_dt} <= %({field_name_in_bom_uploader})s) OR {field_name_in_item_dt} <=  %({field_name_in_bom_uploader})s ) ".format(**att_map))
-						elif att.match_type == '==':
-							conditions.append(" ( {} = %({})s ) ".format(att_map.field_name_in_item_dt, att_map.field_name_in_bom_uploader))
+					if len(attr_doc.attributes) > 0:
+						
+						for att in attr_doc.attributes:
+							att_map = frappe._dict(field_map[att.attribute])
+							# print(att_map, "==============att_map==========")
 
-					if conditions:
-						print(conditions, "==========conditions====================")
-						sql = sql + " AND " + " AND ".join(conditions) + ' LIMIT 10'
+							if att.attribute == 'Sub Assembly Keyword':
+								conditions.append(" ( %({})s like concat('%%', {}, '%%') ) ".format(att_map.field_name_in_bom_uploader, att_map.field_name_in_item_dt))
+							elif att.match_type == '>=':
+								conditions.append(" {field_name_in_item_dt} >=  %({field_name_in_bom_uploader})s ".format(**att_map))
+								max_value = frappe.db.sql_list(
+									"SELECT min({field_name_in_item_dt}) FROM `tabItem` WHERE custom_material_type = '{0}' AND item_group !='{1}' AND {field_name_in_item_dt} >= %({field_name_in_bom_uploader})s".format(item.material_type, sub_assembly_item_group, **att_map),
+									item.as_dict()
+								)
+								# print(max_value, "========================max_value============================")
+								if max_value and max_value[0]:
+									near_by_value[att_map.field_name_in_item_dt] = max_value[0]
 
-					matched_items = frappe.db.sql(sql, item.as_dict(), pluck='name', debug=1)
-					item.matched_item_list = ','.join(matched_items)
-					print(item.matched_item_list, '-------------------print(item.matched_item_list)----------------------')
+							elif att.match_type == '<=':
+								conditions.append(" {field_name_in_item_dt} <=  %({field_name_in_bom_uploader})s ".format(**att_map))
+								min_value = frappe.db.sql_list(
+									"SELECT max({field_name_in_item_dt}) FROM `tabItem` WHERE custom_material_type = '{0}' AND item_group !='{1}' AND {field_name_in_item_dt} <= %({field_name_in_bom_uploader})s AND {field_name_in_item_dt} > 0".format(item.material_type, sub_assembly_item_group, **att_map),
+									item.as_dict()
+								)
+								if min_value and min_value[0]:
+									near_by_value[att_map.field_name_in_item_dt] = min_value[0]
 
+							elif att.match_type == '==':
+								conditions.append(" ( {} = %({})s ) ".format(att_map.field_name_in_item_dt, att_map.field_name_in_bom_uploader))
+						
+						# print(conditions, "---------------------conditionsss------", attr_doc.name)
+						if conditions:
+							sql = sql + " AND " + " AND ".join(conditions)
+
+						# print(sql, "--------------sql----------------------")
+						matched_items = frappe.db.sql(sql, item.as_dict(), pluck='name')
+						print(matched_items, "========matched_items=====")
+
+						final_matched_items = []
+						# exact_matched_items = []
+						if near_by_value and len(matched_items) > 0:
+
+							print(near_by_value, "===========near_by_value=======")
+
+							for i in matched_items:
+								item_doc = frappe.get_doc('Item', i)
+								# item_values = {}
+
+								for key, value in near_by_value.items():
+									# item_values[key] = item_doc.get(key)
+									if key in item_doc.as_dict() and item_doc.get(key) == value:
+										if item_doc.name not in final_matched_items:
+											final_matched_items.append(item_doc.name)
+											continue
+								
+								# print(item_values, "----------------item_values------------")
+								# if near_by_value == item_values:
+								# 	exact_matched_items.append(item_doc.name)
+
+							# print(exact_matched_items, "==================exact_matched_items=============")	
+
+							print(final_matched_items, "===================final_matched_items=============")
+							if len(final_matched_items) > 0:
+								item.matched_item_list = ','.join(final_matched_items)
+								if len(final_matched_items) == 1:
+									item.matched_item_list = final_matched_items[0]
+									item.matched_item = final_matched_items[0]
+									item.status = "Match"
+								else:
+									item.status = "Multi Match"
+								
+
+							else:
+								item.matched_item_list = ','.join(matched_items)
+								if len(matched_items) == 1:
+									item.matched_item_list = matched_items[0]
+									item.matched_item = matched_items[0]
+									item.status = "Match"
+								else:
+									item.status = "Multi Match"
+						
+						else:
+							item.status = "Not Found"
+
+				count += 1
+				frappe.publish_progress(count/len(self.bom_item_details_mw) * 100, title='Finding Matching Items', description='')						
+
+	def check_if_item_is_bought_out(self):
+		if len(self.bom_item_details_mw) > 0:
+			for item in self.bom_item_details_mw:
+				if item.item_level == "Level 2" and item.matched_item:
+					item_group = frappe.db.get_value('Item', item.matched_item, 'item_group')
+					default_item_group_for_bought_out = frappe.db.get_single_value('Mechwell Setting MW', 'default_item_group_for_bought_out')
+					if not default_item_group_for_bought_out:
+						frappe.throw(_("Please set Default Item Group for Bought Out In Mechwell Settings Doctype."))
+
+					is_bought_out = check_if_item_group_is_bought_out(default_item_group_for_bought_out, item_group)
+					print(is_bought_out, "===============is_bought_out=============")
+					if is_bought_out:
+						item.is_bought_out = 'Yes'
+					else:
+						item.is_bought_out = 'No'
+	
+	def calculate_raw_material_weight(self):
+		for item in self.bom_item_details_mw:
+			if item.item_level == "Level 2" and item.matched_item:
+				print(item.matched_item, "========item.matched_item_list====")
+				ig, wmf = frappe.db.get_value("Item", item.matched_item, ["item_group", "custom_wmf"])
+				item_group = frappe.get_doc('Item Group', ig)
+				formula = item_group.custom_raw_material_weight_formula
+				formula_params = {
+					'L': item.length or 0,
+					'W': item.width or 0,
+					'T': item.thickness or 0,
+					'D': item_group.custom_density or 0,
+					'OD' : item.od or 0,
+					'ID' : item.id or 0,
+					'WPM' : wmf or 0,
+					'PPW' : wmf or 0,
+					'TP' : item.qty or 0,
+					'π': 3.14
+				}
+				if item_group.custom_is_od_formula_exists == 1:
+					formula = item_group.custom_od_based_weight_formula or None
+				else:
+					formula = item_group.custom_raw_material_weight_formula or None
+
+				if not formula:
+					frappe.throw(_("Please set Raw Material Weight Formula in Item Group <b>{0}</b>").format(get_link_to_form("Item Group", item_group.name)))
+					
+				total_weight = frappe.safe_eval(formula, None, formula_params)
+
+				print(total_weight, "-----------total_weight-----------")
+				item.raw_material_weight = total_weight or 0
+
+def check_if_item_group_is_bought_out(default_item_group_for_bought_out, item_group):
+	if item_group == default_item_group_for_bought_out:
+		return True
+	elif item_group != default_item_group_for_bought_out:
+		parent_item_group = frappe.db.get_value('Item Group', item_group, 'parent_item_group')
+		if parent_item_group == default_item_group_for_bought_out:
+			return True
+		elif not parent_item_group:
+			return False
+		elif parent_item_group and parent_item_group != default_item_group_for_bought_out:
+			check_if_item_group_is_bought_out(default_item_group_for_bought_out, parent_item_group)
+	
 def attributes_field_mapping():
 	attribute_mw = frappe.db.get_all('Attribute MW', fields=['name', 'field_name_in_item_dt', 'field_name_in_bom_uploader'])
 	field_map = {}
@@ -412,19 +559,3 @@ def download_formatted_excel(name=None):
 	workbook.save(xlsx_file)
 
 	provide_binary_file(doc.name, 'xlsx', xlsx_file.getvalue())
-
-def get_item_list_not_in_sub_assembly_group_and_same_material_type(material_type):
-	sub_assembly_item_group = frappe.db.get_single_value('Mechwell Setting MW', 'default_item_group_for_sub_assembly')
-	if not sub_assembly_item_group:
-		frappe.throw(_("Please set Default Item Group for Sub Assembly In Mechwell Settings Doctype."))
-
-	item_list = frappe.db.sql_list("""select name from `tabItem`
-					where item_group !='{0}' and custom_material_type='{1}'""".format(sub_assembly_item_group, material_type))
-	
-
-	return item_list
-
-def get_matched_item_based_on_material_attributes(material_type, item_list):
-	matched_items = []
-
-	return matched_items

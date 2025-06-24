@@ -5,14 +5,6 @@ frappe.ui.form.on("BOM Uploader MW", {
 	refresh(frm){
 		$('.grid-add-row').hide()
 		$('.grid-remove-rows').hide()
-
-		//////// Autocomplete Field Type ////////
-		// if (frm.doc.dam_code == "DAM0124"){
-		// 	frm.fields_dict.test.set_data(["three", "Four"])
-		// }
-		// else{
-		// 	frm.fields_dict.test.set_data(["One", "two"])
-		// }
 	},
 	dam_code(frm){
 		if (frm.doc.dam_code){
@@ -34,48 +26,70 @@ frappe.ui.form.on("BOM Uploader MW", {
 	},
 });
 
-
-
 /////////////////// Multiple Matched Item ///////////////////
 
-// frappe.ui.form.on("BOM Item Details MW", {
-// 	choose_item: function (frm, cdt, cdn) {
-// 		let row = locals[cdt][cdn]
-// 		console.log('choose item------->', row.name)
+frappe.ui.form.on("BOM Item Details MW", {
+	choose_item: function (frm, cdt, cdn) {
+		let row = locals[cdt][cdn]
+		console.log('choose item------->', row.name)
 
-// 		let dialog = undefined
-// 		const dialog_field = []
+		if (row.matched_item_list) {
+			let str = row.matched_item_list || "";
+			let array = str.split(",").map(s => s.trim().replace(/'/g, ''));
 
-// 		let matched_items = []
-// 		if (row.idx == 1){
-// 			matched_items = ["aaa", "bbb", "ccc"]
-// 		}
-// 		else if (row.idx == 2){
-// 			matched_items = ["111", "222", "333"]
-// 		}
-// 		else{
-// 			matched_items = ["@@@", "###", "$$$"]
-// 		}
+			if (array.length === 1 ) {
+				frappe.show_alert({
+				message:__('Matched Item already Selected'),
+				indicator:'green'
+				}, 5);
+			}
 
-// 		dialog_field.push(
-// 			{
-// 				fieldtype: "Select",
-// 				fieldname: "select_item",
-// 				label: __("Matched Items"),
-// 				options: matched_items,
-// 				read_only: 0,
-// 			},
-// 		)
+			else if (array.length > 1) {
+				let dialog = undefined
+				const dialog_field = []
 
-// 		 dialog = new frappe.ui.Dialog({
-// 			title: __("Select Item"),
-// 			fields: dialog_field,
-// 			primary_action_label: 'Get Items',
-// 			primary_action: function (values) {
-// 				console.log(values, "-----values")
-// 				dialog.hide();
-// 			}
-// 		 })
-// 		 dialog.show()
-// 	}
-// })
+			dialog_field.push(
+				{
+					fieldtype: "Select",
+					fieldname: "select_item",
+					label: __("Matched Items"),
+					options: array || [],
+					read_only: 0,
+				},
+			)
+
+			dialog = new frappe.ui.Dialog({
+				title: __("Select Item"),
+				fields: dialog_field,
+				primary_action_label: 'Get Items',
+				primary_action: function (values) {
+					console.log(values, "-----values")
+					if (values){
+						let selected_item = values.select_item;
+						frappe.model.set_value(cdt, cdn, 'matched_item', selected_item);
+						frappe.model.set_value(cdt, cdn, 'status', 'Match');
+						frm.save()
+					}
+					dialog.hide();
+				}
+			})
+			dialog.show()
+			}
+			
+		}
+		else if (!row.matched_item_list &&  row.matched_item){
+			frappe.show_alert({
+				message:__('Matched Item already Selected'),
+				indicator:'green'
+			}, 5);
+		}
+		else if (!row.matched_item_list &&  !row.matched_item){
+			frappe.show_alert({
+				message:__('No matched items found for this item.'),
+				indicator:'Red'
+			}, 5);
+		}
+
+
+	}
+})
