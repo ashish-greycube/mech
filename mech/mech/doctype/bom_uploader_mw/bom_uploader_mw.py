@@ -38,7 +38,6 @@ TABLE_HEADERS = [
 
 class BOMUploaderMW(Document):
 	def validate(self):
-
 		if self.import_excel:
 			excel_data = self.read_excel()
 			self.validate_imported_excel(excel_data)
@@ -47,6 +46,15 @@ class BOMUploaderMW(Document):
 		self.set_matched_item_in_bom_items()
 		self.check_if_item_is_bought_out()
 		self.calculate_raw_material_weight()
+		# self.check_if_all_matched_items_found()
+		# self.make_sub_assembly_items()
+		# self.make_bom_creator()
+
+
+	# def before_submit(self):
+	# 	self.check_if_all_matched_items_found()
+	# 	self.make_sub_assembly_items()
+	# 	self.make_bom_creator()
 
 	###### get connected sales order of item ######
 	@frappe.whitelist()
@@ -377,26 +385,26 @@ class BOMUploaderMW(Document):
 
 						final_matched_items = []
 						# exact_matched_items = []
-						if near_by_value and len(matched_items) > 0:
+						if len(matched_items) > 0:
+							if near_by_value:
+								print(near_by_value, "===========near_by_value=======")
 
-							print(near_by_value, "===========near_by_value=======")
+								for i in matched_items:
+									item_doc = frappe.get_doc('Item', i)
+									# item_values = {}
 
-							for i in matched_items:
-								item_doc = frappe.get_doc('Item', i)
-								# item_values = {}
+									for key, value in near_by_value.items():
+										# item_values[key] = item_doc.get(key)
+										if key in item_doc.as_dict() and item_doc.get(key) == value:
+											if item_doc.name not in final_matched_items:
+												final_matched_items.append(item_doc.name)
+												continue
+									
+									# print(item_values, "----------------item_values------------")
+									# if near_by_value == item_values:
+									# 	exact_matched_items.append(item_doc.name)
 
-								for key, value in near_by_value.items():
-									# item_values[key] = item_doc.get(key)
-									if key in item_doc.as_dict() and item_doc.get(key) == value:
-										if item_doc.name not in final_matched_items:
-											final_matched_items.append(item_doc.name)
-											continue
-								
-								# print(item_values, "----------------item_values------------")
-								# if near_by_value == item_values:
-								# 	exact_matched_items.append(item_doc.name)
-
-							# print(exact_matched_items, "==================exact_matched_items=============")	
+								# print(exact_matched_items, "==================exact_matched_items=============")	
 
 							print(final_matched_items, "===================final_matched_items=============")
 							if len(final_matched_items) > 0:
@@ -471,6 +479,77 @@ class BOMUploaderMW(Document):
 
 				print(total_weight, "-----------total_weight-----------")
 				item.raw_material_weight = total_weight or 0
+
+	def check_if_all_matched_items_found(self):
+		if len(self.bom_item_details_mw) > 0:
+			item_not_found = []
+			for row in self.bom_item_details_mw:
+				if not row.matched_item and row.item_level == "Level 2":
+					item_not_found.append(cstr(row.idx))
+			
+			print(item_not_found, "==========item_not_found======")
+			if len(item_not_found) > 0:
+				frappe.throw(_("For Below Row Numbers Match Item Not Found.<br> <b>{0}</b>").format(", ".join((ele if ele != None else "") for ele in item_not_found)))
+
+	def make_sub_assembly_items(self):
+		if len(self.bom_item_details_mw) > 0:
+			sub_assembly_item_group = frappe.db.get_single_value('Mechwell Setting MW', 'default_item_group_for_sub_assembly')
+			for row in self.bom_item_details_mw:
+				if row.is_bought_out != "Yes":
+					new_item = frappe.new_doc("Item")
+					new_item.item_code = row.parent_fg + "-" + row.sr_no
+					new_item.item_name = row.description
+					new_item.item_group = sub_assembly_item_group
+					# new_item.is_stock_item = 1
+					# new_item.stock_uom = "Nos"
+					# new_item.custom_material_type = row.material_type
+					new_item.custom_length = row.length
+					new_item.custom_width = row.width
+					new_item.custom_outer_diameter = row.od
+					new_item.custom_inner_diameter = row.id
+					new_item.custom_thickness = row.thickness
+
+					new_item.save(ignore_permissions=True)
+
+					row.sub_assembly_item = new_item.name
+
+	def make_bom_creator(self):
+		if len(self.bom_item_details_mw) > 0:
+			bom = frappe.new_doc("BOM Creator")
+			bom.__newname = self.name
+			bom.name = self.name
+			bom.item_code = self.dam_code
+			bom.qty = 1
+			bom.custom_bom_uploader_ref = self.name
+
+			for row in self.bom_item_details_mw:
+				item = bom.append("items", {})
+				item.item_code = row.sub_assembly_item
+				item.fg_item = row.parent_fg
+				item.qty = row.qty
+				item.is_expandable = 1
+				if row.item_level == "Level 2":
+					parent_idx = frappe.db.get_value("BOM Item Details MW", {"sub_assembly_item": row.parent_fg}, "idx")
+					# print(parent_idx, "=======parent_idx======")
+					item.parent_row_no = parent_idx
+				if row.gad_mfg == "GAD":
+					item.allow_alternative_item = 0
+				else:
+					item.allow_alternative_item = 1	
+
+				if row.matched_item and row.item_level == "Level 2":
+					raw_item = bom.append("items", {})
+					raw_item.item_code = row.matched_item
+					raw_item.fg_item = item.item_code
+					raw_item.qty = row.raw_material_weight
+					raw_item.parent_row_no = item.idx
+					if row.gad_mfg == "GAD":
+						raw_item.allow_alternative_item = 0
+					else:
+						raw_item.allow_alternative_item = 1
+			
+			bom.save(ignore_permissions=True)		
+
 
 def check_if_item_group_is_bought_out(default_item_group_for_bought_out, item_group):
 	if item_group == default_item_group_for_bought_out:

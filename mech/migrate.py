@@ -148,6 +148,52 @@ def create_custom_fields_in_core_doctype():
 				"is_custom_field": 1,
 				"is_system_generated": 0,
 			},
+		],
+
+		"BOM Creator":[
+			{
+				"fieldname": "custom_section_break_1",
+				"fieldtype": "Section Break",
+				"label": "BOM Uploader Details",
+				"insert_after": "company",
+				"is_custom_field": 1,
+				"is_system_generated": 0,
+			},
+			{
+				"fieldname": "custom_bom_uploader_ref",
+				"fieldtype": "Link",
+				"label": "BOM Uploader Reference",
+				"insert_after": "custom_section_break_1",
+				"options": "BOM Uploader MW",
+				"read_only": 1,
+				"is_custom_field": 1,
+				"is_system_generated": 0,
+			},
+			{
+				"fieldname": "custom_section_break_2",
+				"fieldtype": "Section Break",
+				"label": "Operations",
+				"insert_after": "custom_bom_uploader_ref",
+				"depends_on" : "eval:doc.custom_bom_uploader_ref",
+				"is_custom_field": 1,
+				"is_system_generated": 0,
+			},
+			{
+				"fieldname": "custom_download_operation_excel",
+				"fieldtype": "Button",
+				"label": "Download Operation Excel",
+				"insert_after": "custom_section_break_2",
+				"is_custom_field": 1,
+				"is_system_generated": 0,
+			},
+			{
+				"fieldname": "custom_attach_operation_data",
+				"fieldtype": "Attach",
+				"label": "Import Operation Data",
+				"insert_after": "download_operation_excel",
+				"is_custom_field": 1,
+				"is_system_generated": 0,
+			}
 		]
 
 	}

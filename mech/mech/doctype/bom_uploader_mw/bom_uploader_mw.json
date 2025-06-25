@@ -125,8 +125,13 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
- "links": [],
- "modified": "2025-06-04 14:58:11.637913",
+ "links": [
+  {
+   "link_doctype": "BOM Creator",
+   "link_fieldname": "custom_bom_uploader_ref"
+  }
+ ],
+ "modified": "2025-06-25 10:54:29.014129",
  "modified_by": "Administrator",
  "module": "Mech",
  "name": "BOM Uploader MW",
