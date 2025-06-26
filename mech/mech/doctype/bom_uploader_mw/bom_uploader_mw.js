@@ -32,8 +32,37 @@ frappe.ui.form.on("BOM Item Details MW", {
 	choose_item: function (frm, cdt, cdn) {
 		let row = locals[cdt][cdn]
 		console.log('choose item------->', row.name)
+		let dialog = undefined
+		const dialog_field = []
 
-		if (row.matched_item_list) {
+		if (row.status == "Not Found" || (row.status == "Match" && (!row.matched_item_list || row.matched_item_list == ''))){
+			let sub_assembly_item_group = ""
+			frappe.db.get_single_value('Mechwell Setting MW', 'default_item_group_for_sub_assembly')
+				.then(item_group => {
+					console.log(item_group);
+					sub_assembly_item_group = item_group
+				})
+
+			dialog_field.push(
+				{
+					fieldtype: "Link",
+					fieldname: "select_item",
+					label: __("Items"),
+					options: "Item",
+					read_only: 0,
+					get_query: () => {
+						return{
+							filters: {
+								"item_group": ["!=", sub_assembly_item_group],
+								"custom_material_type": ["=", row.material_type]
+							}
+						}
+					}
+				},
+			)
+		}
+
+		else if (row.matched_item_list) {
 			let str = row.matched_item_list || "";
 			let array = str.split(",").map(s => s.trim().replace(/'/g, ''));
 
@@ -45,19 +74,25 @@ frappe.ui.form.on("BOM Item Details MW", {
 			}
 
 			else if (array.length > 1) {
-				let dialog = undefined
-				const dialog_field = []
-
 			dialog_field.push(
 				{
-					fieldtype: "Select",
+					fieldtype: "Link",
 					fieldname: "select_item",
-					label: __("Matched Items"),
-					options: array || [],
+					label: __("Items"),
+					options: "Item",
 					read_only: 0,
+					get_query: () => {
+						return{
+							filters: {
+								"name": ["in", array],
+							}
+						}
+					}
 				},
 			)
-
+		}	
+		}
+		if (dialog_field.length > 0){
 			dialog = new frappe.ui.Dialog({
 				title: __("Select Item"),
 				fields: dialog_field,
@@ -68,28 +103,12 @@ frappe.ui.form.on("BOM Item Details MW", {
 						let selected_item = values.select_item;
 						frappe.model.set_value(cdt, cdn, 'matched_item', selected_item);
 						frappe.model.set_value(cdt, cdn, 'status', 'Match');
-						frm.save()
+						// frm.save()
 					}
 					dialog.hide();
 				}
 			})
-			dialog.show()
-			}
-			
+		dialog.show()
 		}
-		else if (!row.matched_item_list &&  row.matched_item){
-			frappe.show_alert({
-				message:__('Matched Item already Selected'),
-				indicator:'green'
-			}, 5);
-		}
-		else if (!row.matched_item_list &&  !row.matched_item){
-			frappe.show_alert({
-				message:__('No matched items found for this item.'),
-				indicator:'Red'
-			}, 5);
-		}
-
-
 	}
 })

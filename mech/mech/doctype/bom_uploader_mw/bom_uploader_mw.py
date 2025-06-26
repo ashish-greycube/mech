@@ -51,10 +51,10 @@ class BOMUploaderMW(Document):
 		# self.make_bom_creator()
 
 
-	# def before_submit(self):
-	# 	self.check_if_all_matched_items_found()
-	# 	self.make_sub_assembly_items()
-	# 	self.make_bom_creator()
+	def before_submit(self):
+		self.check_if_all_matched_items_found()
+		self.make_sub_assembly_items()
+		self.make_bom_creator()
 
 	###### get connected sales order of item ######
 	@frappe.whitelist()
@@ -91,7 +91,6 @@ class BOMUploaderMW(Document):
 			# print(excel_data, '------------excel_data------------')
 
 			excel_table_data = self.get_excel_table_data(excel_data)
-			self.validate_naming_and_sr_no_of_items(excel_table_data)
 
 			alphabetic_items_details, alphanumeric_items_details = self.create_level_1_and_2_item_lists(excel_table_data)
 			table_header_col = excel_data[7]
@@ -102,6 +101,8 @@ class BOMUploaderMW(Document):
 			self.validate_excel_columns(table_header_col)
 			self.check_in_excel_all_matrial_type_exists(excel_table_data)
 			self.validate_mandatory_fields_in_excel(excel_table_data, alphanumeric_items_details)
+			self.validate_naming_and_sr_no_of_items(excel_table_data)
+			
 			# validate_material_type_for_alphanumeric_items_in_excel(alphanumeric_items_details)
 
 			self.fill_bom_item_details_table(excel_table_data, alphabetic_items_details)
@@ -156,7 +157,7 @@ class BOMUploaderMW(Document):
 					).format(item.get("idx"), item.get("sr_no"))
 					naming_errors.append(msg1)
 					# frappe.throw(_("In Excel Line No - {0}, Sr No should be alphabetic not {1}").format(item.get('idx'), item.get('sr_no')))
-				if item.get("sr_no") not in alphabets:
+				if item.get("sr_no") and item.get("sr_no") not in alphabets:
 					alphabets.append(item.get("sr_no"))
 				elif item.get("sr_no") in alphabets:
 					msg2 = ("SR No {0} exists multiple time.").format(item.get("sr_no"))
@@ -167,7 +168,7 @@ class BOMUploaderMW(Document):
 
 				dam_code = self.dam_code
 				pattern = re.compile(rf"^{re.escape(dam_code)}-[A-Z]+$")
-				if not pattern.match(item.get("parent_fg")):
+				if not pattern.match(item.get("parent_fg")) and item.get("parent_fg"):
 					msg3 = (
 						"In Excel Line No - {0}, Incorrect Naming format of Parent FG {1}"
 					).format(item.get("idx"), item.get("parent_fg"))
@@ -194,7 +195,7 @@ class BOMUploaderMW(Document):
 		return alphabetic_items, alphanumeric_items
 
 	def validate_excel_columns(self, excel_column):
-		print(excel_column)
+		# print(excel_column)
 		a = excel_column
 		b = TABLE_HEADERS
 		# print(list(zip(a, b)), '---------zip(a, b)-------')
@@ -381,13 +382,13 @@ class BOMUploaderMW(Document):
 
 						# print(sql, "--------------sql----------------------")
 						matched_items = frappe.db.sql(sql, item.as_dict(), pluck='name')
-						print(matched_items, "========matched_items=====")
+						# print(matched_items, "========matched_items=====")
 
 						final_matched_items = []
 						# exact_matched_items = []
 						if len(matched_items) > 0:
 							if near_by_value:
-								print(near_by_value, "===========near_by_value=======")
+								# print(near_by_value, "===========near_by_value=======")
 
 								for i in matched_items:
 									item_doc = frappe.get_doc('Item', i)
@@ -406,7 +407,7 @@ class BOMUploaderMW(Document):
 
 								# print(exact_matched_items, "==================exact_matched_items=============")	
 
-							print(final_matched_items, "===================final_matched_items=============")
+							# print(final_matched_items, "===================final_matched_items=============")
 							if len(final_matched_items) > 0:
 								item.matched_item_list = ','.join(final_matched_items)
 								if len(final_matched_items) == 1:
@@ -442,7 +443,7 @@ class BOMUploaderMW(Document):
 						frappe.throw(_("Please set Default Item Group for Bought Out In Mechwell Settings Doctype."))
 
 					is_bought_out = check_if_item_group_is_bought_out(default_item_group_for_bought_out, item_group)
-					print(is_bought_out, "===============is_bought_out=============")
+					# print(is_bought_out, "===============is_bought_out=============")
 					if is_bought_out:
 						item.is_bought_out = 'Yes'
 					else:
@@ -451,7 +452,11 @@ class BOMUploaderMW(Document):
 	def calculate_raw_material_weight(self):
 		for item in self.bom_item_details_mw:
 			if item.item_level == "Level 2" and item.matched_item:
-				print(item.matched_item, "========item.matched_item_list====")
+
+				if item.is_bought_out == "Yes":
+					item.raw_material_weight = item.qty
+
+				# print(item.matched_item, "========item.matched_item_list====")
 				ig, wmf = frappe.db.get_value("Item", item.matched_item, ["item_group", "custom_wmf"])
 				item_group = frappe.get_doc('Item Group', ig)
 				formula = item_group.custom_raw_material_weight_formula
@@ -477,7 +482,7 @@ class BOMUploaderMW(Document):
 					
 				total_weight = frappe.safe_eval(formula, None, formula_params)
 
-				print(total_weight, "-----------total_weight-----------")
+				# print(total_weight, "-----------total_weight-----------")
 				item.raw_material_weight = total_weight or 0
 
 	def check_if_all_matched_items_found(self):
@@ -487,7 +492,7 @@ class BOMUploaderMW(Document):
 				if not row.matched_item and row.item_level == "Level 2":
 					item_not_found.append(cstr(row.idx))
 			
-			print(item_not_found, "==========item_not_found======")
+			# print(item_not_found, "==========item_not_found======")
 			if len(item_not_found) > 0:
 				frappe.throw(_("For Below Row Numbers Match Item Not Found.<br> <b>{0}</b>").format(", ".join((ele if ele != None else "") for ele in item_not_found)))
 
