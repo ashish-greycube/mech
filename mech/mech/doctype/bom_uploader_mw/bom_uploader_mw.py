@@ -46,15 +46,14 @@ class BOMUploaderMW(Document):
 		self.set_matched_item_in_bom_items()
 		self.check_if_item_is_bought_out()
 		self.calculate_raw_material_weight()
-		# self.check_if_all_matched_items_found()
-		# self.make_sub_assembly_items()
-		# self.make_bom_creator()
-
 
 	def before_submit(self):
 		self.check_if_all_matched_items_found()
 		self.make_sub_assembly_items()
+	
+	def on_submit(self):
 		self.make_bom_creator()
+
 
 	###### get connected sales order of item ######
 	@frappe.whitelist()
@@ -528,31 +527,39 @@ class BOMUploaderMW(Document):
 
 			for row in self.bom_item_details_mw:
 				item = bom.append("items", {})
-				item.item_code = row.sub_assembly_item
+				parent_idx = frappe.db.get_value("BOM Item Details MW", {"sub_assembly_item": row.parent_fg}, "idx")
+
 				item.fg_item = row.parent_fg
 				item.qty = row.qty
-				item.is_expandable = 1
 				item.custom_sr_no = row.sr_no
-				if row.item_level == "Level 2":
-					parent_idx = frappe.db.get_value("BOM Item Details MW", {"sub_assembly_item": row.parent_fg}, "idx")
-					# print(parent_idx, "=======parent_idx======")
-					item.parent_row_no = parent_idx
+				item.parent_row_no = parent_idx
 				if row.gad_mfg == "GAD":
-					item.allow_alternative_item = 0
+						item.allow_alternative_item = 0
 				else:
-					item.allow_alternative_item = 1	
+					item.allow_alternative_item = 1
 
-				if row.matched_item and row.item_level == "Level 2":
-					raw_item = bom.append("items", {})
-					raw_item.item_code = row.matched_item
-					raw_item.fg_item = item.item_code
-					raw_item.qty = row.raw_material_weight
-					raw_item.parent_row_no = item.idx
-					if row.gad_mfg == "GAD":
-						raw_item.allow_alternative_item = 0
-					else:
-						raw_item.allow_alternative_item = 1
-			
+				if row.is_bought_out == "Yes":
+					item.item_code = row.matched_item
+					# print(item.item_code, "=============== Bought out=======")
+
+				else:
+					item.item_code = row.sub_assembly_item
+					# print(item.item_code, "===============")
+					item.is_expandable = 1
+					# print(row.parent_fg, item.parent_row_no, "================item.parent_row_no================", parent_idx)
+
+					if row.matched_item and row.item_level == "Level 2":
+						raw_item = bom.append("items", {})
+						raw_item.item_code = row.matched_item
+						raw_item.fg_item = item.item_code
+						raw_item.qty = row.raw_material_weight
+						raw_item.parent_row_no = item.idx
+						print(raw_item.parent_row_no, "================raw_item.parent_row_no")
+						if row.gad_mfg == "GAD":
+							raw_item.allow_alternative_item = 0
+						else:
+							raw_item.allow_alternative_item = 1
+						
 			bom.save(ignore_permissions=True)		
 
 

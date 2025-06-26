@@ -158,31 +158,36 @@
    "fieldname": "length",
    "fieldtype": "Float",
    "label": "Length",
-   "precision": "2"
+   "precision": "2",
+   "read_only": 1
   },
   {
    "fieldname": "thickness",
    "fieldtype": "Float",
    "label": "Thickness",
-   "precision": "2"
+   "precision": "2",
+   "read_only": 1
   },
   {
    "fieldname": "width",
    "fieldtype": "Float",
    "label": "Width",
-   "precision": "2"
+   "precision": "2",
+   "read_only": 1
   },
   {
    "fieldname": "od",
    "fieldtype": "Float",
    "label": "OD",
-   "precision": "2"
+   "precision": "2",
+   "read_only": 1
   },
   {
    "fieldname": "id",
    "fieldtype": "Float",
    "label": "ID",
-   "precision": "2"
+   "precision": "2",
+   "read_only": 1
   },
   {
    "columns": 1,
@@ -224,7 +229,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-06-24 17:18:56.219195",
+ "modified": "2025-06-26 14:53:11.026673",
  "modified_by": "Administrator",
  "module": "Mech",
  "name": "BOM Item Details MW",
