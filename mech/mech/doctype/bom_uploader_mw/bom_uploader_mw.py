@@ -452,38 +452,37 @@ class BOMUploaderMW(Document):
 	def calculate_raw_material_weight(self):
 		for item in self.bom_item_details_mw:
 			if item.item_level == "Level 2" and item.matched_item:
-
 				if item.is_bought_out == "Yes":
 					item.raw_material_weight = item.qty
-
-				# print(item.matched_item, "========item.matched_item_list====")
-				ig, wmf = frappe.db.get_value("Item", item.matched_item, ["item_group", "custom_wmf"])
-				item_group = frappe.get_doc('Item Group', ig)
-				formula = item_group.custom_raw_material_weight_formula
-				formula_params = {
-					'L': item.length or 0,
-					'W': item.width or 0,
-					'T': item.thickness or 0,
-					'D': item_group.custom_density or 0,
-					'OD' : item.od or 0,
-					'ID' : item.id or 0,
-					'WPM' : wmf or 0,
-					'PPW' : wmf or 0,
-					'TP' : item.qty or 0,
-					'π': 3.14
-				}
-				if item_group.custom_is_od_formula_exists == 1:
-					formula = item_group.custom_od_based_weight_formula or None
 				else:
-					formula = item_group.custom_raw_material_weight_formula or None
+					# print(item.matched_item, "========item.matched_item_list====")
+					ig, wmf = frappe.db.get_value("Item", item.matched_item, ["item_group", "custom_wmf"])
+					item_group = frappe.get_doc('Item Group', ig)
+					formula = item_group.custom_raw_material_weight_formula
+					formula_params = {
+						'L': item.length or 0,
+						'W': item.width or 0,
+						'T': item.thickness or 0,
+						'D': item_group.custom_density or 0,
+						'OD' : item.od or 0,
+						'ID' : item.id or 0,
+						'WPM' : wmf or 0,
+						'PPW' : wmf or 0,
+						'TP' : item.qty or 0,
+						'π': 3.14
+					}
+					if item_group.custom_is_od_formula_exists == 1:
+						formula = item_group.custom_od_based_weight_formula or None
+					else:
+						formula = item_group.custom_raw_material_weight_formula or None
 
-				if not formula:
-					frappe.throw(_("Please set Raw Material Weight Formula in Item Group <b>{0}</b>").format(get_link_to_form("Item Group", item_group.name)))
-					
-				total_weight = frappe.safe_eval(formula, None, formula_params)
+					if not formula:
+						frappe.throw(_("Please set Raw Material Weight Formula in Item Group <b>{0}</b>").format(get_link_to_form("Item Group", item_group.name)))
+						
+					total_weight = frappe.safe_eval(formula, None, formula_params)
 
-				# print(total_weight, "-----------total_weight-----------")
-				item.raw_material_weight = total_weight or 0
+					# print(total_weight, "-----------total_weight-----------")
+					item.raw_material_weight = total_weight or 0
 
 	def check_if_all_matched_items_found(self):
 		if len(self.bom_item_details_mw) > 0:
@@ -533,6 +532,7 @@ class BOMUploaderMW(Document):
 				item.fg_item = row.parent_fg
 				item.qty = row.qty
 				item.is_expandable = 1
+				item.custom_sr_no = row.sr_no
 				if row.item_level == "Level 2":
 					parent_idx = frappe.db.get_value("BOM Item Details MW", {"sub_assembly_item": row.parent_fg}, "idx")
 					# print(parent_idx, "=======parent_idx======")

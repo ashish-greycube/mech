@@ -107,6 +107,22 @@ def create_custom_fields_in_core_doctype():
 				"is_system_generated": 0,
 			},
 			{
+				"fieldname": "custom_column_break_2",
+				"fieldtype": "Column Break",
+				"insert_after": "custom_density",
+				"is_custom_field": 1,
+				"is_system_generated": 0,
+			},
+			{
+				"fieldname": "custom_formula_help",
+				"fieldtype": "HTML",
+				"label": "Help",
+				"insert_after": "custom_column_break_2",
+				"is_custom_field": 1,
+				"is_system_generated": 0,
+				"options": "<h4> Weight Formula Symbols & Instructions</h4><h5>Use the following symbols in your weight formulas:</h5><table border=1 class='text-center'><tr><th width=50%>Symbol</th><th width=50%>Meaning</th></tr><tr><td>L</td><td>Length</td></tr><tr><td>W</td><td>Width</td></tr><tr><td>T</td><td>Thickness</td></tr><tr><td>D</td><td>Density</td></tr><tr><td>OD</td><td>Outer Diameter</td></tr><tr><td>ID</td><td>Inner Diameter</td></tr><tr><td>WPM</td><td>Weight Multiplication Factor</td></tr><tr><td>PPW</td><td>Weight Multiplication Factor</td></tr><tr><td>TP</td><td>Quantity</td></tr><tr><td>π</td><td>Pi (3.14)</td></tr></table><br><h4>Example Formulas</h4><ul><li><strong>Basic Formula:</strong><code> ((L * W * T * D) / 100) * TP</code></li><p>Note: Please Enter Flat Formula</p><li><strong>When Total Length (TL) is used:</strong><code> TL = L * TP</code><br><strong>Enter Flat Formula: </strong><code>WPM * (L * TP)</code></li></ul>"
+			},
+			{
 				"fieldname": "custom_section_break_2",
 				"fieldtype": "Section Break",
 				"label": "Weight Formula",
@@ -191,6 +207,18 @@ def create_custom_fields_in_core_doctype():
 				"fieldtype": "Attach",
 				"label": "Import Operation Data",
 				"insert_after": "download_operation_excel",
+				"is_custom_field": 1,
+				"is_system_generated": 0,
+			}
+		],
+
+		"BOM Creator Item": [
+			{
+				"fieldname": "custom_sr_no",
+				"fieldtype": "Data",
+				"label": "SR No",
+				"insert_after": "parent_row_no",
+				"read_only": 1,
 				"is_custom_field": 1,
 				"is_system_generated": 0,
 			}
