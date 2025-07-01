@@ -51,7 +51,8 @@ app_license = "mit"
 doctype_js = {
     "Quotation" : "public/js/quotation.js",
     "Purchase Order" : "public/js/purchase_order.js",
-    "Sales Order" : "public/js/sales_order.js"
+    "Sales Order" : "public/js/sales_order.js",
+    # "BOM Creator" : "public/js/bom_creator.js"
     }
 
 # Svg Icons
@@ -151,6 +152,13 @@ after_migrate = "mech.migrate.after_migrate"
 # 		"on_cancel": "method",
 # 		"on_trash": "method"
 # 	}
+# }
+
+# doc_events = {
+#     "BOM Creator":{
+#         "validate": ["mech.api.fill_operation_table_from_excel_data",
+#                      "mech.api.clear_operation_table_if_not_attached_excel"]
+#     }
 # }
 
 # Scheduled Tasks

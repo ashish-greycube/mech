@@ -5,3 +5,5 @@
 tags
 node_modules
 __pycache__
+mech/api.py
+mech/public/js/bom_creator.js

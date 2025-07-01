@@ -23,7 +23,6 @@ from frappe.desk.utils import provide_binary_file
 TABLE_HEADERS = [
 			"Row No",
 			"Parent FG",
-			"BOM Item Code",
 			"Sr No",
 			"Description",
 			"Length",
@@ -53,6 +52,9 @@ class BOMUploaderMW(Document):
 	
 	def on_submit(self):
 		self.make_bom_creator()
+	
+	def on_cancel(self):
+		self.delete_all_sub_assembly_items()
 
 
 	###### get connected sales order of item ######
@@ -101,9 +103,6 @@ class BOMUploaderMW(Document):
 			self.check_in_excel_all_matrial_type_exists(excel_table_data)
 			self.validate_mandatory_fields_in_excel(excel_table_data, alphanumeric_items_details)
 			self.validate_naming_and_sr_no_of_items(excel_table_data)
-			
-			# validate_material_type_for_alphanumeric_items_in_excel(alphanumeric_items_details)
-
 			self.fill_bom_item_details_table(excel_table_data, alphabetic_items_details)
 
 	def get_excel_table_data(self, excel_data):
@@ -126,17 +125,17 @@ class BOMUploaderMW(Document):
 						"idx": idx + 1, 
 						"row_no": row[0],
 						"parent_fg": row[1],
-						"bom_item_code": row[2],
-						"sr_no": row[3],
-						"Description": row[4],
-						"Length": row[5],
-						"Width": row[6],
-						"OD": row[7],
-						"ID": row[8],
-						"Thickness": row[9],
-						"material_type": row[10],
-						"Qty": row[11],
-						"gad_mfg": row[12]
+						# "bom_item_code": row[2],
+						"sr_no": row[2],
+						"Description": row[3],
+						"Length": row[4],
+						"Width": row[5],
+						"OD": row[6],
+						"ID": row[7],
+						"Thickness": row[8],
+						"material_type": row[9],
+						"Qty": row[10],
+						"gad_mfg": row[11]
 					})
 			else:
 				pass
@@ -306,7 +305,7 @@ class BOMUploaderMW(Document):
 				item = self.append("bom_item_details_mw", {})
 				item.row_no = data.get("row_no")
 				item.parent_fg = data.get("parent_fg")
-				item.bom_item_code = data.get("bom_item_code")
+				# item.bom_item_code = data.get("bom_item_code")
 				item.sr_no = data.get("sr_no")
 				item.description = data.get("Description")
 				item.length = data.get("Length")
@@ -412,7 +411,7 @@ class BOMUploaderMW(Document):
 								if len(final_matched_items) == 1:
 									item.matched_item_list = final_matched_items[0]
 									item.matched_item = final_matched_items[0]
-									item.status = "Match"
+									
 								else:
 									item.status = "Multi Match"
 								
@@ -422,9 +421,15 @@ class BOMUploaderMW(Document):
 								if len(matched_items) == 1:
 									item.matched_item_list = matched_items[0]
 									item.matched_item = matched_items[0]
-									item.status = "Match"
+									# item.status = "Match"
 								else:
 									item.status = "Multi Match"
+
+							if item.matched_item:
+								item_group, custom_wmf = frappe.db.get_value("Item", item.matched_item, ["item_group", "custom_wmf"])
+								item.matched_item_group = item_group
+								item.item_wmf = custom_wmf
+								item.status = "Match"
 						
 						else:
 							item.status = "Not Found"
@@ -449,10 +454,12 @@ class BOMUploaderMW(Document):
 						item.is_bought_out = 'No'
 	
 	def calculate_raw_material_weight(self):
+
+		total_raw_weight = 0
 		for item in self.bom_item_details_mw:
 			if item.item_level == "Level 2" and item.matched_item:
 				if item.is_bought_out == "Yes":
-					item.raw_material_weight = item.qty
+					item.raw_material_weight = item.qty * (item.item_wmf or 0) 
 				else:
 					# print(item.matched_item, "========item.matched_item_list====")
 					ig, wmf = frappe.db.get_value("Item", item.matched_item, ["item_group", "custom_wmf"])
@@ -482,6 +489,9 @@ class BOMUploaderMW(Document):
 
 					# print(total_weight, "-----------total_weight-----------")
 					item.raw_material_weight = total_weight or 0
+
+				total_raw_weight = total_raw_weight + (item.raw_material_weight or 0)
+				self.total_weight = total_raw_weight
 
 	def check_if_all_matched_items_found(self):
 		if len(self.bom_item_details_mw) > 0:
@@ -524,6 +534,7 @@ class BOMUploaderMW(Document):
 			bom.item_code = self.dam_code
 			bom.qty = 1
 			bom.custom_bom_uploader_ref = self.name
+			bom.project = self.project
 
 			for row in self.bom_item_details_mw:
 				item = bom.append("items", {})
@@ -540,6 +551,9 @@ class BOMUploaderMW(Document):
 
 				if row.is_bought_out == "Yes":
 					item.item_code = row.matched_item
+					item.custom_is_bought_out = row.is_bought_out
+					item.qty = row.raw_material_weight
+
 					# print(item.item_code, "=============== Bought out=======")
 
 				else:
@@ -560,7 +574,20 @@ class BOMUploaderMW(Document):
 						else:
 							raw_item.allow_alternative_item = 1
 						
-			bom.save(ignore_permissions=True)		
+			bom.save(ignore_permissions=True)
+
+	def delete_all_sub_assembly_items(self):
+		bom_creator = frappe.db.get_value("BOM Creator", {"custom_bom_uploader_ref": self.name}, "name")
+		# print(bom_creator, "=========bom_creator=======")
+		if len(self.bom_item_details_mw) > 0 and not bom_creator:
+			for row in self.bom_item_details_mw:
+				if row.sub_assembly_item:
+					sub_assembly_item = frappe.get_doc("Item", row.sub_assembly_item)
+					# print(sub_assembly_item.name, "============sub_assembly_item======")
+					row.sub_assembly_item = ""
+					sub_assembly_item.delete()
+				
+			frappe.msgprint("Sub Assembly Items Are Deleted", alert=1)
 
 
 def check_if_item_group_is_bought_out(default_item_group_for_bought_out, item_group):
@@ -627,21 +654,21 @@ def download_formatted_excel(name=None):
 
 	sheet.column_dimensions['A'].width = 10
 	sheet.column_dimensions['B'].width = 12
-	sheet.column_dimensions['C'].width = 15
-	sheet.column_dimensions['D'].width = 10
-	sheet.column_dimensions['E'].width = 20
+	sheet.column_dimensions['C'].width = 10
+	sheet.column_dimensions['D'].width = 20
+	sheet.column_dimensions['E'].width = 10
 	sheet.column_dimensions['F'].width = 10
 	sheet.column_dimensions['G'].width = 10
 	sheet.column_dimensions['H'].width = 10
 	sheet.column_dimensions['I'].width = 10
-	sheet.column_dimensions['J'].width = 10
-	sheet.column_dimensions['K'].width = 20
+	sheet.column_dimensions['J'].width = 20
+	sheet.column_dimensions['K'].width = 10
 	sheet.column_dimensions['L'].width = 10
 	sheet.column_dimensions['M'].width = 10
 
 	bg_fill = PatternFill(fill_type='solid', start_color='FF474C', end_color='FF474C')
 
-	cells_to_style = ['A8', 'B8', 'D8','E8', 'K8', 'L8', 'M8']
+	cells_to_style = ['A8', 'B8', 'C8','D8', 'J8', 'K8', 'L8']
 	for cell_coord in cells_to_style:
 		cell = sheet[cell_coord]
 		cell.fill = bg_fill

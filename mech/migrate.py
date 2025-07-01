@@ -188,7 +188,7 @@ def create_custom_fields_in_core_doctype():
 			{
 				"fieldname": "custom_section_break_2",
 				"fieldtype": "Section Break",
-				"label": "Operations",
+				"label": "",
 				"insert_after": "custom_bom_uploader_ref",
 				"depends_on" : "eval:doc.custom_bom_uploader_ref",
 				"is_custom_field": 1,
@@ -206,10 +206,31 @@ def create_custom_fields_in_core_doctype():
 				"fieldname": "custom_attach_operation_data",
 				"fieldtype": "Attach",
 				"label": "Import Operation Data",
-				"insert_after": "download_operation_excel",
+				"insert_after": "custom_download_operation_excel",
 				"is_custom_field": 1,
 				"is_system_generated": 0,
-			}
+			},
+			{
+				"fieldname": "custom_section_break_3",
+				"fieldtype": "Section Break",
+				"label": "Operations Details",
+				"insert_after": "raw_material_cost",
+				"depends_on" : "eval:doc.custom_bom_uploader_ref",
+				"is_custom_field": 1,
+				"is_system_generated": 0,
+			},
+			{
+				"fieldname": "custom_operations_details",
+				"fieldtype": "Table",
+				"label": "Operations",
+				"insert_after": "custom_section_break_3",
+				"options": "Operations MW",
+				"read_only": 0,
+				"is_custom_field": 1,
+				"is_system_generated": 0,
+				"depends_on" : "eval:doc.custom_bom_uploader_ref",
+			},
+
 		],
 
 		"BOM Creator Item": [
@@ -221,7 +242,28 @@ def create_custom_fields_in_core_doctype():
 				"read_only": 1,
 				"is_custom_field": 1,
 				"is_system_generated": 0,
+			},
+			{
+				"fieldname": "custom_is_bought_out",
+				"fieldtype": "Data",
+				"label": "Is Bought Out",
+				"insert_after": "custom_sr_no",
+				"read_only": 1,
+				"is_custom_field": 1,
+				"is_system_generated": 0,
 			}
+		],
+
+		"Operation": [
+			{
+				"fieldname": "custom_priority",
+				"fieldtype": "Int",
+				"label": "Priority",
+				"insert_after": "is_corrective_operation",
+				"read_only": 0,
+				"is_custom_field": 1,
+				"is_system_generated": 0,
+			},
 		]
 
 	}
