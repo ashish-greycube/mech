@@ -477,7 +477,7 @@ class BOMUploaderMW(Document):
 						'TP' : item.qty or 0,
 						'π': 3.14
 					}
-					if item_group.custom_is_od_formula_exists == 1:
+					if item_group.custom_is_od_formula_exists == 1 and item.od:
 						formula = item_group.custom_od_based_weight_formula or None
 					else:
 						formula = item_group.custom_raw_material_weight_formula or None

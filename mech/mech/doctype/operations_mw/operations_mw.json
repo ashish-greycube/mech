@@ -16,28 +16,31 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Item",
-   "options": "Item"
+   "options": "Item",
+   "read_only": 1
   },
   {
    "fieldname": "operation",
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Operation",
-   "options": "Operation"
+   "options": "Operation",
+   "read_only": 1
   },
   {
    "fieldname": "operation_time",
    "fieldtype": "Float",
    "in_list_view": 1,
    "label": "Operation Time (In Mins)",
-   "precision": "2"
+   "precision": "2",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-06-27 15:05:47.202954",
+ "modified": "2025-07-02 15:52:17.001161",
  "modified_by": "Administrator",
  "module": "Mech",
  "name": "Operations MW",

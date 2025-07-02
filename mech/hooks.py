@@ -52,7 +52,7 @@ doctype_js = {
     "Quotation" : "public/js/quotation.js",
     "Purchase Order" : "public/js/purchase_order.js",
     "Sales Order" : "public/js/sales_order.js",
-    # "BOM Creator" : "public/js/bom_creator.js"
+    "BOM Creator" : "public/js/bom_creator.js"
     }
 
 # Svg Icons
@@ -154,12 +154,16 @@ after_migrate = "mech.migrate.after_migrate"
 # 	}
 # }
 
-# doc_events = {
-#     "BOM Creator":{
-#         "validate": ["mech.api.fill_operation_table_from_excel_data",
-#                      "mech.api.clear_operation_table_if_not_attached_excel"]
-#     }
-# }
+doc_events = {
+    "BOM Creator":{
+        "validate": ["mech.api.fill_operation_table_from_excel_data",
+                     "mech.api.clear_operation_table_if_not_attached_excel",
+                     "mech.api.validate_operation_excel"]
+    },
+    "BOM":{
+        "validate": "mech.api.add_operation_from_bom_creator"
+    }
+}
 
 # Scheduled Tasks
 # ---------------
