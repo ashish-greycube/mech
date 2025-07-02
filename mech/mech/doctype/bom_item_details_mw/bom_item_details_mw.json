@@ -220,7 +220,8 @@
    "fieldname": "sub_assembly_item",
    "fieldtype": "Link",
    "label": "Sub Assembly Item",
-   "options": "Item"
+   "options": "Item",
+   "read_only": 1
   },
   {
    "fieldname": "section_break_ubxo",
@@ -252,7 +253,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-07-01 10:48:04.704189",
+ "modified": "2025-07-01 10:56:45.333305",
  "modified_by": "Administrator",
  "module": "Mech",
  "name": "BOM Item Details MW",
