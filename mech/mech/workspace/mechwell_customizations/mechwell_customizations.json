@@ -1,0 +1,62 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"3X7PohlU8C\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Mechwell-Customizations</span>\",\"col\":12}},{\"id\":\"bs3iUD6O0O\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item\",\"col\":3}},{\"id\":\"80guNIZNYp\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item Group\",\"col\":3}},{\"id\":\"HccdfsV2Xp\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Material Type MW\",\"col\":3}},{\"id\":\"nLmsBtPKfI\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"BOM Uploader MW\",\"col\":3}}]",
+ "creation": "2025-07-01 10:31:57.957035",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "setting-gear",
+ "idx": 0,
+ "indicator_color": "purple",
+ "is_hidden": 0,
+ "label": "Mechwell-Customizations",
+ "links": [],
+ "modified": "2025-07-03 13:35:15.343853",
+ "modified_by": "Administrator",
+ "module": "Mech",
+ "name": "Mechwell-Customizations",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 40.0,
+ "shortcuts": [
+  {
+   "color": "Orange",
+   "doc_view": "List",
+   "label": "BOM Uploader MW",
+   "link_to": "BOM Uploader MW",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Item Group",
+   "link_to": "Item Group",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Item",
+   "link_to": "Item",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "Material Type MW",
+   "link_to": "Material Type MW",
+   "stats_filter": "[]",
+   "type": "DocType"
+  }
+ ],
+ "title": "Mechwell-Customizations"
+}

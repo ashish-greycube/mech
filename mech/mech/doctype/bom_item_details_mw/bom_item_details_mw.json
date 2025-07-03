@@ -218,7 +218,7 @@
   },
   {
    "fieldname": "sub_assembly_item",
-   "fieldtype": "Link",
+   "fieldtype": "Data",
    "label": "Sub Assembly Item",
    "options": "Item",
    "read_only": 1
@@ -253,7 +253,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-07-01 10:56:45.333305",
+ "modified": "2025-07-03 09:55:25.676078",
  "modified_by": "Administrator",
  "module": "Mech",
  "name": "BOM Item Details MW",
