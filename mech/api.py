@@ -227,6 +227,12 @@ def check_workstation_exist_for_all_operation(self, method):
 def add_operation_from_bom_creator(self, method):
 	if self.bom_creator and self.bom_creator_item:
 		# print(self.bom_creator , "====================")
+		allow_alternative_item = frappe.db.get_value("BOM Creator Item", self.bom_creator_item, "allow_alternative_item")
+		if allow_alternative_item == 1:
+			self.allow_alternative_item = 1
+		else:
+			self.allow_alternative_item = 0
+			
 		bom_uploader = frappe.db.get_value("BOM Creator", self.bom_creator, "name")
 		if bom_uploader:
 			bom_creator = frappe.get_doc("BOM Creator", self.bom_creator)
