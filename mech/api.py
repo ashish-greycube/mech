@@ -230,8 +230,10 @@ def add_operation_from_bom_creator(self, method):
 		allow_alternative_item = frappe.db.get_value("BOM Creator Item", self.bom_creator_item, "allow_alternative_item")
 		if allow_alternative_item == 1:
 			self.allow_alternative_item = 1
+			self.custom_gad_mfg = "MFG"
 		else:
 			self.allow_alternative_item = 0
+			self.custom_gad_mfg = "GAD"
 			
 		bom_uploader = frappe.db.get_value("BOM Creator", self.bom_creator, "name")
 		if bom_uploader:

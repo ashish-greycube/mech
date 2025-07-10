@@ -268,10 +268,20 @@ def create_custom_fields_in_core_doctype():
 
 		"BOM": [
 			{
+				"fieldname": "custom_gad_mfg",
+				"fieldtype": "Select",
+				"label": "GAD/MFG",
+				"options": "GAD\nMFG",
+				"insert_after": "image",
+				"read_only": 1,
+				"is_custom_field": 1,
+				"is_system_generated": 0,
+			},
+			{
 				"fieldname": "custom_section_break_1",
 				"fieldtype": "Section Break",
 				"label": "Item Attributes",
-				"insert_after": "image",
+				"insert_after": "custom_gad_mfg",
 				"is_custom_field": 1,
 				"is_system_generated": 0,
 			},
