@@ -5,6 +5,9 @@ frappe.ui.form.on("BOM Uploader MW", {
 	refresh(frm){
 		$('.grid-add-row').hide()
 		$('.grid-remove-rows').hide()
+		if (frm.is_new()){
+			frm.dashboard.add_comment(__("<b>Please save the form to download excel for import</b>"), "blue", true);
+		}
 	},
 	dam_code(frm){
 		if (frm.doc.dam_code){

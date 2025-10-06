@@ -53,7 +53,7 @@
    "fieldtype": "Section Break"
   },
   {
-   "depends_on": "eval:doc.dam_code",
+   "depends_on": "eval:doc.dam_code && !doc.__islocal",
    "fieldname": "download_formatted_excel",
    "fieldtype": "Button",
    "label": "Download Formatted Excel",
@@ -64,7 +64,7 @@
    "fieldtype": "Section Break"
   },
   {
-   "depends_on": "eval:doc.dam_code",
+   "depends_on": "eval:doc.dam_code && !doc.__islocal",
    "fieldname": "import_excel",
    "fieldtype": "Attach",
    "label": "Import Excel"
@@ -131,7 +131,7 @@
    "link_fieldname": "custom_bom_uploader_ref"
   }
  ],
- "modified": "2025-07-09 13:07:41.632983",
+ "modified": "2025-10-06 14:31:25.327794",
  "modified_by": "Administrator",
  "module": "Mech",
  "name": "BOM Uploader MW",
