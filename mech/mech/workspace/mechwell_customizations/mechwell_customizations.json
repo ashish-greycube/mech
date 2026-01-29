@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"3X7PohlU8C\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Mechwell-Customizations</span>\",\"col\":12}},{\"id\":\"bs3iUD6O0O\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item\",\"col\":3}},{\"id\":\"80guNIZNYp\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item Group\",\"col\":3}},{\"id\":\"HccdfsV2Xp\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Material Type MW\",\"col\":3}},{\"id\":\"nLmsBtPKfI\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"BOM Uploader MW\",\"col\":3}}]",
+ "content": "[{\"id\":\"3X7PohlU8C\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Mechwell-Customizations</span>\",\"col\":12}},{\"id\":\"bs3iUD6O0O\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item\",\"col\":3}},{\"id\":\"80guNIZNYp\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item Group\",\"col\":3}},{\"id\":\"HccdfsV2Xp\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Material Type MW\",\"col\":3}},{\"id\":\"nLmsBtPKfI\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"BOM Uploader MW\",\"col\":3}},{\"id\":\"81PPEX6AU_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item Material Type Wise Attributes\",\"col\":3}}]",
  "creation": "2025-07-01 10:31:57.957035",
  "custom_blocks": [],
  "docstatus": 0,
@@ -13,7 +13,7 @@
  "is_hidden": 0,
  "label": "Mechwell-Customizations",
  "links": [],
- "modified": "2025-07-03 13:35:15.343853",
+ "modified": "2026-01-29 17:26:32.343842",
  "modified_by": "Administrator",
  "module": "Mech",
  "name": "Mechwell-Customizations",
@@ -32,6 +32,14 @@
    "link_to": "BOM Uploader MW",
    "stats_filter": "[]",
    "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Item Material Type Wise Attributes",
+   "link_to": "Item Material Type Wise Attributes",
+   "report_ref_doctype": "Item",
+   "type": "Report"
   },
   {
    "color": "Grey",
