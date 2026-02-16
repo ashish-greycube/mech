@@ -344,6 +344,8 @@ class BOMUploaderMW(Document):
 
 					attr_doc = frappe.get_doc('Material Type MW', item.material_type)
 
+					is_sub_assembly_exists = False
+					sub_assembly_keyword = ""
 					if len(attr_doc.attributes) > 0:
 						
 						for att in attr_doc.attributes:
@@ -352,6 +354,8 @@ class BOMUploaderMW(Document):
 
 							if att.attribute == 'Sub Assembly Keyword':
 								conditions.append(" ( %({})s like concat('%%', {}, '%%') ) ".format(att_map.field_name_in_bom_uploader, att_map.field_name_in_item_dt))
+								is_sub_assembly_exists = True
+								sub_assembly_keyword = item.get(att_map.field_name_in_bom_uploader) or ""
 							elif att.match_type == '>=':
 								conditions.append(" {field_name_in_item_dt} >=  %({field_name_in_bom_uploader})s ".format(**att_map))
 								max_value = frappe.db.sql_list(
@@ -413,7 +417,19 @@ class BOMUploaderMW(Document):
 									item.matched_item = final_matched_items[0]
 									
 								else:
-									item.status = "Multi Match"
+									if is_sub_assembly_exists == True:
+										exact_matched_items = check_exact_matched_sub_assembly_item(matched_items, sub_assembly_keyword)
+										if len(exact_matched_items) == 1:
+											item.matched_item = exact_matched_items[0]
+											item.matched_item_list = exact_matched_items[0]
+											# item.status = "Match"
+										elif len(exact_matched_items) > 1:
+											item.matched_item_list = ','.join(exact_matched_items)
+											item.status = "Multi Match"
+										else:
+											item.status = "Multi Match"
+									else:
+										item.status = "Multi Match"
 								
 
 							else:
@@ -423,7 +439,19 @@ class BOMUploaderMW(Document):
 									item.matched_item = matched_items[0]
 									# item.status = "Match"
 								else:
-									item.status = "Multi Match"
+									if is_sub_assembly_exists == True:
+										exact_matched_items = check_exact_matched_sub_assembly_item(matched_items, sub_assembly_keyword)
+										if len(exact_matched_items) == 1:
+											item.matched_item = exact_matched_items[0]
+											item.matched_item_list = exact_matched_items[0]
+											# item.status = "Match"
+										elif len(exact_matched_items) > 1:
+											item.matched_item_list = ','.join(exact_matched_items)
+											item.status = "Multi Match"
+										else:
+											item.status = "Multi Match"
+									else:
+										item.status = "Multi Match"
 
 							if item.matched_item:
 								item_group, custom_wmf = frappe.db.get_value("Item", item.matched_item, ["item_group", "custom_wmf"])
@@ -435,7 +463,7 @@ class BOMUploaderMW(Document):
 							item.status = "Not Found"
 
 				count += 1
-				frappe.publish_progress(count/len(self.bom_item_details_mw) * 100, title='Finding Matching Items', description='')						
+				frappe.publish_progress(count/len(self.bom_item_details_mw) * 100, title='Finding Matching Items', description='') 				
 
 	def check_if_item_is_bought_out(self):
 		if len(self.bom_item_details_mw) > 0:
@@ -568,7 +596,7 @@ class BOMUploaderMW(Document):
 						raw_item.fg_item = item.item_code
 						raw_item.qty = row.raw_material_weight
 						raw_item.parent_row_no = item.idx
-						print(raw_item.parent_row_no, "================raw_item.parent_row_no")
+						# print(raw_item.parent_row_no, "================raw_item.parent_row_no")
 						if row.gad_mfg == "GAD":
 							raw_item.allow_alternative_item = 0
 						else:
@@ -610,6 +638,18 @@ def attributes_field_mapping():
 	# print(field_map)
 
 	return field_map
+
+def check_exact_matched_sub_assembly_item(item_list, sub_assembly_keyword):
+		exact_matched_items = []
+		if len(item_list) > 0:
+			for item in item_list:
+				item_keyword = frappe.db.get_value('Item', item, 'custom_sub_assembly_keyword')
+				# print(item,"=======item===", item_keyword)
+				# print(item_keyword.strip().casefold(), "====item_keyword.casefold()===", sub_assembly_keyword.strip().casefold(), "===sub_assembly_keyword.casefold()===")
+				if item_keyword.strip().casefold() == sub_assembly_keyword.strip().casefold():
+					exact_matched_items.append(item)
+
+		return exact_matched_items	
 
 
 ######### create excel - no formatting #########
