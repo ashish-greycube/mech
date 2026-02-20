@@ -506,14 +506,14 @@ class BOMUploaderMW(Document):
 						'π': 3.14
 					}
 					if item_group.custom_is_od_formula_exists == 1 and item.od:
-						formula = item_group.custom_od_based_weight_formula.strip() or None
+						formula = item_group.custom_od_based_weight_formula or None
 					else:
-						formula = item_group.custom_raw_material_weight_formula.strip() or None
+						formula = item_group.custom_raw_material_weight_formula or None
 
 					if not formula:
 						frappe.throw(_("Please set Raw Material Weight Formula in Item Group <b>{0}</b>").format(get_link_to_form("Item Group", item_group.name)))
 						
-					total_weight = frappe.safe_eval(formula, None, formula_params)
+					total_weight = frappe.safe_eval(formula.strip(), None, formula_params)
 
 					# print(total_weight, "-----------total_weight-----------")
 					item.raw_material_weight = total_weight or 0
