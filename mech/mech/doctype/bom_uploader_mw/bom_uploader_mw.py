@@ -19,6 +19,7 @@ from copy import copy as xl_copy
 import os
 from io import BytesIO
 from frappe.desk.utils import provide_binary_file
+from erpnext.manufacturing.doctype.bom_creator.bom_creator import get_parent_row_no
 
 TABLE_HEADERS = [
 			"Row No",
@@ -47,7 +48,7 @@ class BOMUploaderMW(Document):
 		self.calculate_raw_material_weight()
 
 	def before_submit(self):
-		self.check_if_all_matched_items_found()
+		self.check_if_all_matched_items_found_and_weigth_calculated()
 		self.make_sub_assembly_items()
 	
 	def on_submit(self):
@@ -521,16 +522,23 @@ class BOMUploaderMW(Document):
 				total_raw_weight = total_raw_weight + (item.raw_material_weight or 0)
 				self.total_weight = total_raw_weight
 
-	def check_if_all_matched_items_found(self):
+	def check_if_all_matched_items_found_and_weigth_calculated(self):
 		if len(self.bom_item_details_mw) > 0:
 			item_not_found = []
+			weight_not_calculated = []
 			for row in self.bom_item_details_mw:
 				if not row.matched_item and row.item_level == "Level 2":
 					item_not_found.append(cstr(row.idx))
+				if row.item_level == "Level 2" and (not row.raw_material_weight or row.raw_material_weight == 0):
+					weight_not_calculated.append(cstr(row.idx))
 			
 			# print(item_not_found, "==========item_not_found======")
 			if len(item_not_found) > 0:
 				frappe.throw(_("For Below Row Numbers Match Item Not Found.<br> <b>{0}</b>").format(", ".join((ele if ele != None else "") for ele in item_not_found)))
+
+			### weight must be calculated..............
+			# if len(weight_not_calculated) > 0:
+			# 	frappe.throw(_("For Below Row Numbers Raw Material Weight Not Calculated.<br> <b>{0}</b>").format(", ".join((ele if ele != None else "") for ele in weight_not_calculated)))
 
 	def make_sub_assembly_items(self):
 		if len(self.bom_item_details_mw) > 0:
@@ -567,6 +575,14 @@ class BOMUploaderMW(Document):
 			for row in self.bom_item_details_mw:
 				item = bom.append("items", {})
 				parent_idx = frappe.db.get_value("BOM Item Details MW", {"sub_assembly_item": row.parent_fg}, "idx")
+
+				### find parent idx from bom creator item table
+				# parent_idx = None
+				# if len(bom.items) > 0:
+				# 	for pr_idx in bom.items:
+				# 		if pr_idx.item_code == row.parent_fg:
+				# 			parent_idx = pr_idx.idx
+				# 			break
 
 				item.fg_item = row.parent_fg
 				item.qty = row.qty

@@ -8,7 +8,9 @@
   "default_item_groups_section",
   "default_item_group_for_bought_out",
   "column_break_uztj",
-  "default_item_group_for_sub_assembly"
+  "default_item_group_for_sub_assembly",
+  "section_break_wcrl",
+  "cutting_require_item_groups"
  ],
  "fields": [
   {
@@ -35,13 +37,23 @@
    "fieldname": "default_item_groups_section",
    "fieldtype": "Section Break",
    "label": "Default Item Groups"
+  },
+  {
+   "fieldname": "section_break_wcrl",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "cutting_require_item_groups",
+   "fieldtype": "Table MultiSelect",
+   "label": "Cutting Require Item Groups",
+   "options": "Cutting Item Group MW"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-05-27 12:32:12.322585",
+ "modified": "2026-03-23 10:54:04.725183",
  "modified_by": "Administrator",
  "module": "Mech",
  "name": "Mechwell Setting MW",

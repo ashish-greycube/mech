@@ -52,7 +52,8 @@ doctype_js = {
     "Quotation" : "public/js/quotation.js",
     "Purchase Order" : "public/js/purchase_order.js",
     "Sales Order" : "public/js/sales_order.js",
-    "BOM Creator" : "public/js/bom_creator.js"
+    "BOM Creator" : "public/js/bom_creator.js",
+    "Work Order" : "public/js/work_order.js"
     }
 
 # Svg Icons
@@ -161,7 +162,16 @@ doc_events = {
                      "mech.api.validate_operation_excel"]
     },
     "BOM":{
-        "validate": "mech.api.add_operation_from_bom_creator"
+        "validate": ["mech.api.add_operation_from_bom_creator",
+                     "mech.api.check_is_cutting_applicable_in_bom"]
+    },
+    "Work Order": {
+        "validate": "mech.api.skip_material_transfer",
+        "on_update_after_submit": "mech.api.on_change_of_cutting_status_make_stock_entry"
+    },
+    "Stock Entry": {
+        "on_trash": "mech.api.on_trash_update_work_order_cutting_status",
+        "on_cancel": "mech.api.on_trash_update_work_order_cutting_status"
     }
 }
 

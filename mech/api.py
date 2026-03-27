@@ -253,3 +253,69 @@ def add_operation_from_bom_creator(self, method):
 							"time_in_mins": op.operation_time,
 							"workstation": workstation
 						})
+
+def check_is_cutting_applicable_in_bom(self, method):
+	mech_settings = frappe.get_doc("Mechwell Setting MW")
+
+	cutting_group_list = []
+	if len(mech_settings.cutting_require_item_groups) > 0:
+		for group in mech_settings.cutting_require_item_groups:
+			cutting_group_list.append(group.item_group)
+
+		if len(self.items) > 0:
+			for item in self.items:
+				item_group = frappe.db.get_value("Item", item.item_code, "item_group")
+				if item_group in cutting_group_list:
+					self.custom_is_cutting_applicable = 1
+					break
+				else:
+					self.custom_is_cutting_applicable = 0
+					continue
+
+def skip_material_transfer(self, method):
+	if self.custom_is_cutting_applicable == 1:
+		self.skip_transfer = 1
+	else:
+		self.skip_transfer = 0
+
+def on_change_of_cutting_status_make_stock_entry(self, method):
+	cutting_status_changed = self.has_value_changed("custom_cutting_status")
+	if cutting_status_changed and self.custom_cutting_status == "Completed":
+		if not frappe.db.get_value("Warehouse", self.wip_warehouse, "is_group"):
+			wip_warehouse = self.wip_warehouse
+		else:
+			wip_warehouse = None
+
+		stock_entry = frappe.new_doc("Stock Entry")
+
+		stock_entry.purpose = "Manufacture"
+		stock_entry.work_order = self.name
+		stock_entry.company = self.company
+		stock_entry.from_bom = 1
+		stock_entry.bom_no = self.bom_no
+		stock_entry.use_multi_level_bom = self.use_multi_level_bom
+		# accept 0 qty as well
+		stock_entry.fg_completed_qty = self.qty
+
+		if self.bom_no:
+			stock_entry.inspection_required = frappe.db.get_value("BOM", self.bom_no, "inspection_required")
+
+		stock_entry.from_warehouse = (
+			self.source_warehouse
+			if self.skip_transfer and not self.from_wip_warehouse
+			else wip_warehouse
+		)
+		stock_entry.to_warehouse = self.fg_warehouse
+		stock_entry.project = self.project
+
+		stock_entry.set_stock_entry_type()
+		stock_entry.get_items()
+
+		stock_entry.save(ignore_permissions=True)
+		# self.status = "Completed"
+
+		frappe.msgprint(_("Stock Entry {0} Created For Work Order {1}".format(stock_entry.name, self.name)), alert=1)
+
+def on_trash_update_work_order_cutting_status(self, method):
+	if self.stock_entry_type == "Manufacture" and self.work_order:
+		frappe.db.set_value("Work Order", self.work_order, "custom_cutting_status", "Cutting Plan")
