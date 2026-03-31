@@ -275,8 +275,10 @@ def check_is_cutting_applicable_in_bom(self, method):
 def skip_material_transfer(self, method):
 	if self.custom_is_cutting_applicable == 1:
 		self.skip_transfer = 1
+		self.custom_cutting_status = "Cutting Plan"
 	else:
 		self.skip_transfer = 0
+		self.custom_cutting_status = "Completed"
 
 def on_change_of_cutting_status_make_stock_entry(self, method):
 	cutting_status_changed = self.has_value_changed("custom_cutting_status")
