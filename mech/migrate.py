@@ -7,6 +7,65 @@ def after_migrate():
 
 def create_custom_fields_in_core_doctype():
 	custom_fields = {
+		"Sales Order" : [
+			{
+				"fieldname": "custom_processing_at",
+   				"fieldtype": "Table MultiSelect",
+				"label": "Processing at",
+				"insert_after": "order_type",
+				"options": "Processing Locations",
+				"is_custom_field": 1,
+				"is_system_generated": 0,
+			},
+			{
+				"fieldname": "custom_market_segment",
+   				"fieldtype": "Link",
+				"label": "Market Segment",
+				"insert_after": "delivery_date",
+				"options": "Market Segment",
+				"fetch_from": "customer.market_segment",
+				"is_custom_field": 1,
+				"is_system_generated": 0,
+			},
+			{
+				"fieldname": "custom_subject_line",
+   				"fieldtype": "Small Text",
+				"label": "Subject Line",
+				"insert_after": "custom_market_segment",
+				"reqd": 1,
+				"is_custom_field": 1,
+				"is_system_generated": 0,
+			},
+			{
+				"fieldname": "custom_industry",
+   				"fieldtype": "Link",
+				"label": "Industry",
+				"insert_after": "po_date",
+				"options": "Industry Type",
+				"fetch_from": "customer.industry",
+				"is_custom_field": 1,
+				"is_system_generated": 0,
+			},
+			{
+				"fieldname": "custom_mech_order_type",
+				"fieldtype": "Link",
+				"label": "Mech Order Type",
+				"insert_after": "amended_from",
+				"options": "Mech Order Type",
+				"reqd": 1,
+				"is_custom_field": 1,
+				"is_system_generated": 0,
+			},
+			{
+				"fieldname": "custom_reference",
+   				"fieldtype": "Small Text",
+				"label": "Reference",
+				"insert_after": "custom_mech_order_type",
+				"reqd": 1,
+				"is_custom_field": 1,
+				"is_system_generated": 0,
+			}
+		],
 	   "Item" : [
 			{
 				"fieldname": "custom_wmf",
