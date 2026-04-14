@@ -277,7 +277,7 @@ def skip_material_transfer(self, method):
 		self.skip_transfer = 1
 		self.custom_cutting_status = "Cutting Plan"
 	else:
-		self.skip_transfer = 0
+		# self.skip_transfer = 0
 		self.custom_cutting_status = "Completed"
 
 def on_change_of_cutting_status_make_stock_entry(self, method):
