@@ -63,12 +63,15 @@ class BOMUploaderMW(Document):
 	def get_sales_order(self):
 		so_item = frappe.db.get_value('Sales Order Item', {'item_code': self.dam_code}, 'parent')
 		if not so_item:
-			frappe.throw(_("For Item {0} no Sales Order Found.").format(self.dam_code))
-
-		customer, project = frappe.db.get_value('Sales Order', so_item, ['customer', 'project'])
-		self.order_no = so_item
-		self.client = customer
-		self.project = project
+			self.order_no = ""
+			self.client = ""
+			self.project = ""
+			frappe.msgprint(_("For Item {0} no Sales Order Found.").format(self.dam_code), alert=1)
+		else:
+			customer, project = frappe.db.get_value('Sales Order', so_item, ['customer', 'project'])
+			self.order_no = so_item
+			self.client = customer
+			self.project = project
 
 	@frappe.whitelist()
 	def read_excel(self):
