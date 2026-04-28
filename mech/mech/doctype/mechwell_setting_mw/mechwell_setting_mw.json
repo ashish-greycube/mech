@@ -10,7 +10,9 @@
   "column_break_uztj",
   "default_item_group_for_sub_assembly",
   "section_break_wcrl",
-  "cutting_require_item_groups"
+  "cutting_require_item_groups",
+  "column_break_ohft",
+  "restricted_item_groups"
  ],
  "fields": [
   {
@@ -47,13 +49,24 @@
    "fieldtype": "Table MultiSelect",
    "label": "Cutting Require Item Groups",
    "options": "Cutting Item Group MW"
+  },
+  {
+   "fieldname": "column_break_ohft",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "<b>Sub Assembly Items will not be created for the selected Item Groups (In BOM Uploader).</b>",
+   "fieldname": "restricted_item_groups",
+   "fieldtype": "Table MultiSelect",
+   "label": "Restricted Item Groups For Sub Assembly",
+   "options": "Restricted Item Group MW"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-03-23 10:54:04.725183",
+ "modified": "2026-04-28 13:29:02.222740",
  "modified_by": "Administrator",
  "module": "Mech",
  "name": "Mechwell Setting MW",

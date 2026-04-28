@@ -12,6 +12,7 @@
   "column_break_zolz",
   "sr_no",
   "description",
+  "user_input",
   "qty",
   "section_break_kkse",
   "material_type",
@@ -28,6 +29,7 @@
   "choose_item",
   "column_break_yarl",
   "is_bought_out",
+  "create_subassembly_item",
   "section_break_ohqb",
   "item_level",
   "matched_item_list",
@@ -247,13 +249,27 @@
    "fieldtype": "Float",
    "label": "Matched item: Weight Multiplication Factor",
    "read_only": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "user_input",
+   "fieldtype": "Data",
+   "label": "User Input",
+   "read_only": 1
+  },
+  {
+   "default": "Yes",
+   "fieldname": "create_subassembly_item",
+   "fieldtype": "Select",
+   "label": "Create Subassembly Item",
+   "options": "Yes\nNo"
   }
  ],
  "grid_page_length": 500,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-07-03 09:55:25.676078",
+ "modified": "2026-04-20 11:40:16.763780",
  "modified_by": "Administrator",
  "module": "Mech",
  "name": "BOM Item Details MW",

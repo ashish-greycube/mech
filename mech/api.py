@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe.utils import cint, cstr
+from frappe.utils import cint, cstr, flt
 from frappe.utils.xlsxutils import read_xlsx_file_from_attached_file
 import re
 import openpyxl
@@ -46,10 +46,14 @@ def download_operation_formatted_excel(bom_uploader=None, name=None):
 		table_headers,
 	]
 
+	dam_code = [1, "", doc.dam_code]
+	rows_data.append(dam_code)
+
 	if len(doc.bom_item_details_mw) > 0:
 
 		for row in doc.bom_item_details_mw:
-			row_details = [ row.row_no, row.parent_fg, row.sub_assembly_item or '', row.sr_no, row.description, '' if row.length == 0 else row.length, '' if row.width == 0 else row.width, 
+			row_no = cint(row.row_no) + 1
+			row_details = [ row_no, row.parent_fg, row.sub_assembly_item or '', row.sr_no, row.description, '' if row.length == 0 else row.length, '' if row.width == 0 else row.width, 
 				  '' if row.od == 0 else row.od ,'' if row.id == 0 else row.id, '' if row.thickness == 0 else row.thickness, row.material_type or '', row.qty, row.gad_mfg]
 			
 			if row.is_bought_out == "Yes":
@@ -225,7 +229,7 @@ def check_workstation_exist_for_all_operation(self, method):
 			
 
 def add_operation_from_bom_creator(self, method):
-	if self.bom_creator and self.bom_creator_item:
+	if self.bom_creator:
 		# print(self.bom_creator , "====================")
 		allow_alternative_item = frappe.db.get_value("BOM Creator Item", self.bom_creator_item, "allow_alternative_item")
 		if allow_alternative_item == 1:
@@ -275,6 +279,7 @@ def check_is_cutting_applicable_in_bom(self, method):
 def skip_material_transfer(self, method):
 	if self.custom_is_cutting_applicable == 1:
 		self.skip_transfer = 1
+		self.wip_warehouse = None
 		self.custom_cutting_status = "Cutting Plan"
 	else:
 		# self.skip_transfer = 0
@@ -321,3 +326,86 @@ def on_change_of_cutting_status_make_stock_entry(self, method):
 def on_trash_update_work_order_cutting_status(self, method):
 	if self.stock_entry_type == "Manufacture" and self.work_order:
 		frappe.db.set_value("Work Order", self.work_order, "custom_cutting_status", "Cutting Plan")
+
+def on_save_of_material_request_fetch_item_attributes(self, method=None):
+    if len(self.items) > 0:
+        for item in self.items:
+            if item.production_plan != None and item.material_request_plan_item != None:
+                bom = frappe.db.get_value(
+                    doctype = "Material Request Plan Item",
+                    filters = {
+                        "name": item.material_request_plan_item,
+                        "parent": item.production_plan,
+                        "parenttype": "Production Plan",
+                    },
+                    fieldname=["from_bom"]
+                )
+                if bom:
+                    bom_doc = frappe.get_doc("BOM", bom)
+                    if bom_doc:
+                        item.custom_length = bom_doc.custom_length
+                        item.custom_width = bom_doc.custom_width
+                        item.custom_thickness = bom_doc.custom_thickness
+                        item.custom_inner_diameter = bom_doc.custom_inner_diameter
+                        item.custom_outer_diameter = bom_doc.custom_outer_diameter
+
+
+def create_stock_entries_on_bulk_update_of_work_order(self, method=None):
+    if self.name and self.docstatus == 1 and self.custom_is_cutting_applicable == 0:
+        if self.has_value_changed("custom_execute"):
+            if self.custom_execute == "Transfer" and self.skip_transfer == 0:
+                create_stock_entry_based_on_execute(self=self, purpose="Material Transfer for Manufacture")
+            elif self.custom_execute == "Manufacture":
+                create_stock_entry_based_on_execute(self=self, purpose="Manufacture")
+
+    
+def create_stock_entry_based_on_execute(self, purpose):
+    if not frappe.db.get_value("Warehouse", self.wip_warehouse, "is_group"):
+        wip_warehouse = self.wip_warehouse
+    else:
+        wip_warehouse = None
+
+    stock_entry = frappe.new_doc("Stock Entry")
+    stock_entry = frappe.new_doc("Stock Entry")
+    stock_entry.purpose = purpose
+    stock_entry.work_order = self.name
+    stock_entry.company = self.company
+    stock_entry.from_bom = 1
+    stock_entry.bom_no = self.bom_no
+    stock_entry.use_multi_level_bom = self.use_multi_level_bom
+    if purpose in ["Material Transfer for Manufacture", "Manufacture"]:
+        stock_entry.subcontracting_inward_order = self.subcontracting_inward_order
+    # accept 0 qty as well
+    stock_entry.fg_completed_qty = (
+        self.qty if self.qty is not None else (flt(self.qty) - flt(self.produced_qty))
+    )
+
+    if purpose == "Material Transfer for Manufacture":
+        stock_entry.to_warehouse = wip_warehouse
+        stock_entry.project = self.project
+    else:
+        stock_entry.from_warehouse = (
+            self.source_warehouse
+            if self.skip_transfer and not self.from_wip_warehouse
+            else wip_warehouse
+        )
+        stock_entry.to_warehouse = self.fg_warehouse
+        stock_entry.project = self.project
+        if self.bom_no:
+            stock_entry.inspection_required = frappe.db.get_value(
+                "BOM", self.bom_no, "inspection_required"
+            )
+
+    stock_entry.set_stock_entry_type()
+    stock_entry.get_items()
+
+    stock_entry.save(ignore_permissions=True)
+
+    frappe.msgprint(_("Stock Entry {0} Created For Work Order {1}".format(stock_entry.name, self.name)), alert=1)
+
+def on_cancel_update_workorder_execute(self, method=None):
+    if self.stock_entry_type == "Manufacture" and self.work_order:
+        frappe.db.set_value("Work Order", self.work_order, "custom_execute", "Transfer")
+
+    elif self.stock_entry_type == "Material Transfer for Manufacture" and self.work_order:
+        frappe.db.set_value("Work Order", self.work_order, "custom_execute", "")

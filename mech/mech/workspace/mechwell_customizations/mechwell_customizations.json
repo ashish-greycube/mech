@@ -1,6 +1,7 @@
 {
+ "app": "mech",
  "charts": [],
- "content": "[{\"id\":\"3X7PohlU8C\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Mechwell-Customizations</span>\",\"col\":12}},{\"id\":\"bs3iUD6O0O\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item\",\"col\":3}},{\"id\":\"80guNIZNYp\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item Group\",\"col\":3}},{\"id\":\"HccdfsV2Xp\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Material Type MW\",\"col\":3}},{\"id\":\"nLmsBtPKfI\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"BOM Uploader MW\",\"col\":3}},{\"id\":\"81PPEX6AU_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item Material Type Wise Attributes\",\"col\":3}}]",
+ "content": "[{\"id\":\"3X7PohlU8C\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Mechwell-Customizations</span>\",\"col\":12}},{\"id\":\"-GrC51L1kB\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Mechwell Setting\",\"col\":3}},{\"id\":\"bs3iUD6O0O\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item\",\"col\":3}},{\"id\":\"80guNIZNYp\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item Group\",\"col\":3}},{\"id\":\"HccdfsV2Xp\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Material Type MW\",\"col\":3}},{\"id\":\"nLmsBtPKfI\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"BOM Uploader MW\",\"col\":3}},{\"id\":\"81PPEX6AU_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item Material Type Wise Attributes\",\"col\":3}}]",
  "creation": "2025-07-01 10:31:57.957035",
  "custom_blocks": [],
  "docstatus": 0,
@@ -13,7 +14,7 @@
  "is_hidden": 0,
  "label": "Mechwell-Customizations",
  "links": [],
- "modified": "2026-01-29 17:26:32.343842",
+ "modified": "2026-04-21 09:56:23.897795",
  "modified_by": "Administrator",
  "module": "Mech",
  "name": "Mechwell-Customizations",
@@ -31,6 +32,13 @@
    "label": "BOM Uploader MW",
    "link_to": "BOM Uploader MW",
    "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Mechwell Setting",
+   "link_to": "Mechwell Setting MW",
    "type": "DocType"
   },
   {
@@ -66,5 +74,6 @@
    "type": "DocType"
   }
  ],
- "title": "Mechwell-Customizations"
+ "title": "Mechwell-Customizations",
+ "type": "Workspace"
 }

@@ -25,6 +25,7 @@ TABLE_HEADERS = [
 			"Row No",
 			"Parent FG",
 			"Sr No",
+			"User Input",
 			"Description",
 			"Length",
 			"Width",
@@ -44,8 +45,10 @@ class BOMUploaderMW(Document):
 
 		self.clear_table_data_if_not_attached_file()
 		self.set_matched_item_in_bom_items()
-		self.check_if_item_is_bought_out()
+		self.check_if_item_is_bought_out_or_restricted()
 		self.calculate_raw_material_weight()
+		# self.make_sub_assembly_items()
+		# self.make_bom_creator()
 
 	def before_submit(self):
 		self.check_if_all_matched_items_found_and_weigth_calculated()
@@ -131,15 +134,16 @@ class BOMUploaderMW(Document):
 						"parent_fg": row[1],
 						# "bom_item_code": row[2],
 						"sr_no": row[2],
-						"Description": row[3],
-						"Length": row[4],
-						"Width": row[5],
-						"OD": row[6],
-						"ID": row[7],
-						"Thickness": row[8],
-						"material_type": row[9],
-						"Qty": row[10],
-						"gad_mfg": row[11]
+						"user_input": row[3],
+						"Description": row[4],
+						"Length": row[5],
+						"Width": row[6],
+						"OD": row[7],
+						"ID": row[8],
+						"Thickness": row[9],
+						"material_type": row[10],
+						"Qty": row[11],
+						"gad_mfg": row[12]
 					})
 			else:
 				pass
@@ -171,9 +175,7 @@ class BOMUploaderMW(Document):
 				dam_code = self.dam_code
 				pattern = re.compile(rf"^{re.escape(dam_code)}-[A-Z]+$")
 				if not pattern.match(item.get("parent_fg")) and item.get("parent_fg"):
-					msg3 = (
-						"In Excel Line No - {0}, Incorrect Naming format of Parent FG {1}"
-					).format(item.get("idx"), item.get("parent_fg"))
+					msg3 = ("In Excel Line No - {0}, Incorrect Naming format of Parent FG {1}").format(item.get("idx"), item.get("parent_fg"))
 					naming_errors.append(msg3)
 					# frappe.throw(_("In Excel Line No - {0}, Incorrect Naming format of Parent FG {1}").format(item.get('idx'), item.get('parent_fg')))
 
@@ -304,6 +306,7 @@ class BOMUploaderMW(Document):
 
 	def fill_bom_item_details_table(self, excel_table_data, alphabetic_items_details):
 		if len(self.bom_item_details_mw) < 1:
+			self.bom_item_details_mw = []
 			# print("----------------fill_bom_item_details_table------------------" * 5)
 			for data in excel_table_data:
 				item = self.append("bom_item_details_mw", {})
@@ -311,6 +314,7 @@ class BOMUploaderMW(Document):
 				item.parent_fg = data.get("parent_fg")
 				# item.bom_item_code = data.get("bom_item_code")
 				item.sr_no = data.get("sr_no")
+				item.user_input = data.get("user_input")
 				item.description = data.get("Description")
 				item.length = data.get("Length")
 				item.width = data.get("Width")
@@ -469,21 +473,34 @@ class BOMUploaderMW(Document):
 				count += 1
 				frappe.publish_progress(count/len(self.bom_item_details_mw) * 100, title='Finding Matching Items', description='') 				
 
-	def check_if_item_is_bought_out(self):
+	def check_if_item_is_bought_out_or_restricted(self):
+		mech_setting = frappe.get_doc('Mechwell Setting MW')
+		restricted_item_groups = []
+		if len(mech_setting.restricted_item_groups) > 0:
+			for d in mech_setting.restricted_item_groups:
+				restricted_item_groups.append(d.restricted_item_group)
+		# print(restricted_item_groups, "===================restricted_item_groups==========================")
+
+		default_item_group_for_bought_out = mech_setting.default_item_group_for_bought_out
+		if not default_item_group_for_bought_out:
+			frappe.throw(_("Please set Default Item Group for Bought Out In Mechwell Settings Doctype."))
+
 		if len(self.bom_item_details_mw) > 0:
 			for item in self.bom_item_details_mw:
 				if item.item_level == "Level 2" and item.matched_item:
 					item_group = frappe.db.get_value('Item', item.matched_item, 'item_group')
-					default_item_group_for_bought_out = frappe.db.get_single_value('Mechwell Setting MW', 'default_item_group_for_bought_out')
-					if not default_item_group_for_bought_out:
-						frappe.throw(_("Please set Default Item Group for Bought Out In Mechwell Settings Doctype."))
+					item.create_subassembly_item = "Yes"
 
 					is_bought_out = check_if_item_group_is_bought_out(default_item_group_for_bought_out, item_group)
 					# print(is_bought_out, "===============is_bought_out=============")
 					if is_bought_out:
 						item.is_bought_out = 'Yes'
+						item.create_subassembly_item = "No"
 					else:
 						item.is_bought_out = 'No'
+						
+					if item_group in restricted_item_groups and item.is_bought_out == "No":
+						item.create_subassembly_item = "No"
 	
 	def calculate_raw_material_weight(self):
 
@@ -547,11 +564,12 @@ class BOMUploaderMW(Document):
 		if len(self.bom_item_details_mw) > 0:
 			sub_assembly_item_group = frappe.db.get_single_value('Mechwell Setting MW', 'default_item_group_for_sub_assembly')
 			for row in self.bom_item_details_mw:
-				if row.is_bought_out != "Yes":
+				if row.create_subassembly_item != "No":
 					new_item = frappe.new_doc("Item")
 					new_item.item_code = row.parent_fg + "-" + row.sr_no
-					new_item.item_name = row.description
+					new_item.item_name = row.parent_fg + "-" + row.sr_no +  ((" " + row.user_input) if row.user_input else "")
 					new_item.item_group = sub_assembly_item_group
+					new_item.description = row.description
 					# new_item.is_stock_item = 1
 					# new_item.stock_uom = "Nos"
 					# new_item.custom_material_type = row.material_type
@@ -595,11 +613,13 @@ class BOMUploaderMW(Document):
 						item.allow_alternative_item = 0
 				else:
 					item.allow_alternative_item = 1
-
-				if row.is_bought_out == "Yes":
+				
+				if row.create_subassembly_item == "No":
+					item.is_expandable = 0
 					item.item_code = row.matched_item
-					item.custom_is_bought_out = row.is_bought_out
-					item.qty = row.raw_material_weight
+					if row.is_bought_out == "Yes":
+						item.custom_is_bought_out = row.is_bought_out
+						item.qty = row.raw_material_weight
 
 					# print(item.item_code, "=============== Bought out=======")
 
@@ -715,19 +735,19 @@ def download_formatted_excel(name=None):
 	sheet.column_dimensions['B'].width = 12
 	sheet.column_dimensions['C'].width = 10
 	sheet.column_dimensions['D'].width = 20
-	sheet.column_dimensions['E'].width = 10
+	sheet.column_dimensions['E'].width = 20
 	sheet.column_dimensions['F'].width = 10
 	sheet.column_dimensions['G'].width = 10
 	sheet.column_dimensions['H'].width = 10
 	sheet.column_dimensions['I'].width = 10
-	sheet.column_dimensions['J'].width = 20
-	sheet.column_dimensions['K'].width = 10
+	sheet.column_dimensions['J'].width = 10
+	sheet.column_dimensions['K'].width = 20
 	sheet.column_dimensions['L'].width = 10
 	sheet.column_dimensions['M'].width = 10
 
 	bg_fill = PatternFill(fill_type='solid', start_color='FF474C', end_color='FF474C')
 
-	cells_to_style = ['A8', 'B8', 'C8','D8', 'J8', 'K8', 'L8']
+	cells_to_style = ['A8', 'B8', 'C8','E8', 'K8', 'L8', 'M8']
 	for cell_coord in cells_to_style:
 		cell = sheet[cell_coord]
 		cell.fill = bg_fill
