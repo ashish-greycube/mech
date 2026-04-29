@@ -273,7 +273,7 @@ def create_custom_fields_in_core_doctype():
 				"fieldname": "custom_section_break_3",
 				"fieldtype": "Section Break",
 				"label": "Operations Details",
-				"insert_after": "raw_material_cost",
+				"insert_after": "items",
 				"depends_on" : "eval:doc.custom_bom_uploader_ref",
 				"is_custom_field": 1,
 				"is_system_generated": 0,

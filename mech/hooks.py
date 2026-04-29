@@ -170,7 +170,7 @@ doc_events = {
         "on_update_after_submit": ["mech.api.on_change_of_cutting_status_make_stock_entry", "mech.api.create_stock_entries_on_bulk_update_of_work_order"]
     },
     "Stock Entry": {
-        "on_trash": "mech.api.on_trash_update_work_order_cutting_status",
+        "on_trash": ["mech.api.on_trash_update_work_order_cutting_status", "mech.api.on_cancel_update_workorder_execute"],
         "on_cancel": ["mech.api.on_trash_update_work_order_cutting_status", "mech.api.on_cancel_update_workorder_execute"]
     },
     "Material Request": {
