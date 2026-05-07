@@ -8,6 +8,11 @@ frappe.ui.form.on("BOM Uploader MW", {
 		if (frm.is_new()){
 			frm.dashboard.add_comment(__("<b>Please save the form to download excel for import</b>"), "blue", true);
 		}
+		// if (!frm.doc.bom_creator_ref && frm.doc.bom_creator_ref != ''){ 
+        //     frm.add_custom_button(__("Create BOM Creator"), () => {
+        //         // create_bom_creator(frm)
+        //     });
+        // }
 	},
 	dam_code(frm){
 		if (frm.doc.dam_code){

@@ -15,6 +15,7 @@
   "column_break_mzlc",
   "total_weight",
   "amended_from",
+  "bom_creator_ref",
   "section_break_bnkd",
   "download_formatted_excel",
   "section_break_drpb",
@@ -120,6 +121,13 @@
    "fieldtype": "Table",
    "label": "BOM Item Details MW",
    "options": "BOM Item Details MW"
+  },
+  {
+   "fieldname": "bom_creator_ref",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Bom Creator",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
@@ -131,7 +139,7 @@
    "link_fieldname": "custom_bom_uploader_ref"
   }
  ],
- "modified": "2025-10-06 14:31:25.327794",
+ "modified": "2026-05-07 12:09:08.831737",
  "modified_by": "Administrator",
  "module": "Mech",
  "name": "BOM Uploader MW",

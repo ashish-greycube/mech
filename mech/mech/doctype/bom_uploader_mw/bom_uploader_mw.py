@@ -491,7 +491,12 @@ class BOMUploaderMW(Document):
 					item_group = frappe.db.get_value('Item', item.matched_item, 'item_group')
 					item.create_subassembly_item = "Yes"
 
-					is_bought_out = check_if_item_group_is_bought_out(default_item_group_for_bought_out, item_group)
+					is_bought_out = check_if_item_is_bought_out_or_restricted(default_item_group_for_bought_out, item_group)
+					is_restricted_item_group = False
+					for rig in restricted_item_groups:
+						if check_if_item_is_bought_out_or_restricted(rig, item_group):
+							is_restricted_item_group = True
+							break
 					# print(is_bought_out, "===============is_bought_out=============")
 					if is_bought_out:
 						item.is_bought_out = 'Yes'
@@ -499,7 +504,7 @@ class BOMUploaderMW(Document):
 					else:
 						item.is_bought_out = 'No'
 						
-					if item_group in restricted_item_groups and item.is_bought_out == "No":
+					if is_restricted_item_group and item.is_bought_out == "No":
 						item.create_subassembly_item = "No"
 	
 	def calculate_raw_material_weight(self):
@@ -657,17 +662,17 @@ class BOMUploaderMW(Document):
 			frappe.msgprint("Sub Assembly Items Are Deleted", alert=1)
 
 
-def check_if_item_group_is_bought_out(default_item_group_for_bought_out, item_group):
-	if item_group == default_item_group_for_bought_out:
+def check_if_item_is_bought_out_or_restricted(default_item_group_for_bought_out_or_restricted, item_group):
+	if item_group == default_item_group_for_bought_out_or_restricted:
 		return True
-	elif item_group != default_item_group_for_bought_out:
+	elif item_group != default_item_group_for_bought_out_or_restricted:
 		parent_item_group = frappe.db.get_value('Item Group', item_group, 'parent_item_group')
-		if parent_item_group == default_item_group_for_bought_out:
+		if parent_item_group == default_item_group_for_bought_out_or_restricted:
 			return True
 		elif not parent_item_group:
 			return False
-		elif parent_item_group and parent_item_group != default_item_group_for_bought_out:
-			check_if_item_group_is_bought_out(default_item_group_for_bought_out, parent_item_group)
+		elif parent_item_group and parent_item_group != default_item_group_for_bought_out_or_restricted:
+			check_if_item_is_bought_out_or_restricted(default_item_group_for_bought_out_or_restricted, parent_item_group)
 	
 def attributes_field_mapping():
 	attribute_mw = frappe.db.get_all('Attribute MW', fields=['name', 'field_name_in_item_dt', 'field_name_in_bom_uploader'])
