@@ -1,6 +1,6 @@
 frappe.ui.form.on("Production Plan", {
     refresh: function (frm) {
-        if (!frm.is_new()) {
+        if (!frm.is_new() && frm.doc.docstatus == 1 && frm.doc.sub_assembly_items.length > 0) {
             frm.add_custom_button(
                 __("Create Subcontract Request"),
                 () => {
@@ -53,7 +53,7 @@ function create_subcontract_request(frm) {
                 return [];
             },
             fields: table_fields,
-            description: "In Item Master, the 'Subcontracted Item' option must be enabled to create a Subcontract Material Request."
+            description: "After Creating Subcontract Material Request, In Item Master, the 'Subcontracted Item' option will be enabled."
         }
     ]
 
@@ -67,7 +67,7 @@ function create_subcontract_request(frm) {
             if (selected_items.length < 1) {
                 frappe.msgprint(__("Please select Atleast one item to create subcontracting material request."))
             }
-            else { 
+            else {
                 dialog.hide();
                 // console.log(selected_items, "=====data=========")
                 frappe.call({

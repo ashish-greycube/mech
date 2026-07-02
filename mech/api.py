@@ -418,20 +418,20 @@ def get_valid_subcontract_item_for_mr(production_plan, sub_assembly_items):
 
 	valid_items = []
 	for row in sub_assembly_items:
-		is_sub_contracted_item = frappe.db.get_value("Item", row.get("production_item"), "is_sub_contracted_item")
-		if is_sub_contracted_item == 1:
-			mr_data = frappe.db.sql_list(""" 
-								SELECT mr.name 
-								FROM `tabMaterial Request Item` AS mri
-								INNER JOIN `tabMaterial Request` AS mr ON mr.name = mri.parent 
-								WHERE mr.material_request_type = "Subcontracting" AND 
-										mri.item_code = "{0}" AND
-										mri.custom_sub_assembly_item = "{1}" AND 
-										mri.production_plan = "{2}"
-								""".format(row.get("production_item"), row.get("name"), production_plan))
-			
-			if len(mr_data) < 1:
-				valid_items.append(row)
+		# is_sub_contracted_item = frappe.db.get_value("Item", row.get("production_item"), "is_sub_contracted_item")
+		# if is_sub_contracted_item == 1:
+		mr_data = frappe.db.sql_list(""" 
+							SELECT mr.name 
+							FROM `tabMaterial Request Item` AS mri
+							INNER JOIN `tabMaterial Request` AS mr ON mr.name = mri.parent 
+							WHERE mr.material_request_type = "Subcontracting" AND 
+									mri.item_code = "{0}" AND
+									mri.custom_sub_assembly_item = "{1}" AND 
+									mri.production_plan = "{2}"
+							""".format(row.get("production_item"), row.get("name"), production_plan))
+		
+		if len(mr_data) < 1:
+			valid_items.append(row)
 	
 	return valid_items
 
@@ -445,6 +445,7 @@ def create_subcontracting_material_request_for_production_plan(assembly_items, p
 
 	for sub_items in assembly_items:
 		# if sub_items.get("__checked") == 1:
+		frappe.db.set_value("Item", sub_items["production_item"], "is_sub_contracted_item", 1, update_modified=True)
 		mr.append("items", {
 			"item_code": sub_items["production_item"],
 			"schedule_date": getdate(nowdate()),
@@ -456,7 +457,7 @@ def create_subcontracting_material_request_for_production_plan(assembly_items, p
 		})
 
 	mr.save(ignore_permissions=True)
-	frappe.msgprint(_("Material Request {0} Created.".format(get_link_to_form("Material Request",mr.name)) ))
+	frappe.msgprint(_("Material Request {0} Created.<br /> <br />Enabled 'Is Subcontracted Item' for selected Items in Item Master.".format(get_link_to_form("Material Request",mr.name))))
 	return mr.name
 
 def create_subcontract_bom_from_material_request(self, method):
