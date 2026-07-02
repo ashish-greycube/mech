@@ -53,7 +53,8 @@ doctype_js = {
     "Purchase Order" : "public/js/purchase_order.js",
     "Sales Order" : "public/js/sales_order.js",
     "BOM Creator" : "public/js/bom_creator.js",
-    "Work Order" : "public/js/work_order.js"
+    "Work Order" : "public/js/work_order.js",
+    "Production Plan" : "public/js/production_plan.js"
     }
 
 # Svg Icons
@@ -174,7 +175,8 @@ doc_events = {
         "on_cancel": ["mech.api.on_trash_update_work_order_cutting_status", "mech.api.on_cancel_update_workorder_execute"]
     },
     "Material Request": {
-        "validate": "mech.api.on_save_of_material_request_fetch_item_attributes"
+        "validate": "mech.api.on_save_of_material_request_fetch_item_attributes",
+        "on_submit": "mech.api.create_subcontract_bom_from_material_request"
     }
 }
 

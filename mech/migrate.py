@@ -574,6 +574,26 @@ def create_custom_fields_in_core_doctype():
 
 		"Material Request Item": [
 			{
+				"fieldname": "custom_operations",
+				"fieldtype": "Text Editor",
+				"label": "Operations",
+				"insert_after": "schedule_date",
+				"is_custom_field": 1,
+				"is_system_generated": 0,
+				"in_list_view": 1,
+				"columns": 3
+			},
+			{
+				"fieldname": "custom_sub_assembly_item",
+				"fieldtype": "Data",
+				"label": "Sub Assembly Item Ref",
+				"insert_after": "production_plan",
+				"is_custom_field": 1,
+				"is_system_generated": 0,
+				"no_copy": 1,
+				"read_only": 1
+			},
+			{
 				"insert_after": "amount",
 				"fieldname": "custom_item_attributes_section",
 				"fieldtype": "Section Break",

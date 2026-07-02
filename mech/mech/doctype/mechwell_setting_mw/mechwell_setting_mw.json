@@ -12,7 +12,9 @@
   "section_break_wcrl",
   "cutting_require_item_groups",
   "column_break_ohft",
-  "restricted_item_groups"
+  "restricted_item_groups",
+  "section_break_sepf",
+  "service_item_for_subcontract"
  ],
  "fields": [
   {
@@ -60,13 +62,24 @@
    "fieldtype": "Table MultiSelect",
    "label": "Restricted Item Groups For Sub Assembly",
    "options": "Restricted Item Group MW"
+  },
+  {
+   "fieldname": "section_break_sepf",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "service_item_for_subcontract",
+   "fieldtype": "Link",
+   "label": "Service Item For Subcontract",
+   "link_filters": "[[\"Item\",\"is_stock_item\",\"=\",0]]",
+   "options": "Item"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-04-28 13:29:02.222740",
+ "modified": "2026-06-29 12:42:54.187657",
  "modified_by": "Administrator",
  "module": "Mech",
  "name": "Mechwell Setting MW",

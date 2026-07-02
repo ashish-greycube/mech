@@ -1,11 +1,12 @@
 import frappe
 from frappe import _
-from frappe.utils import cint, cstr, flt
+from frappe.utils import cint, cstr, flt, get_link_to_form, nowdate, getdate
 from frappe.utils.xlsxutils import read_xlsx_file_from_attached_file
 import re
 import openpyxl
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+import json
 
 import os
 from io import BytesIO
@@ -409,3 +410,68 @@ def on_cancel_update_workorder_execute(self, method=None):
 
     elif self.stock_entry_type == "Material Transfer for Manufacture" and self.work_order:
         frappe.db.set_value("Work Order", self.work_order, "custom_execute", "")
+
+@frappe.whitelist()
+def get_valid_subcontract_item_for_mr(production_plan, sub_assembly_items):
+	if isinstance(sub_assembly_items, str):
+		sub_assembly_items = json.loads(sub_assembly_items)
+
+	valid_items = []
+	for row in sub_assembly_items:
+		is_sub_contracted_item = frappe.db.get_value("Item", row.get("production_item"), "is_sub_contracted_item")
+		if is_sub_contracted_item == 1:
+			mr_data = frappe.db.sql_list(""" 
+								SELECT mr.name 
+								FROM `tabMaterial Request Item` AS mri
+								INNER JOIN `tabMaterial Request` AS mr ON mr.name = mri.parent 
+								WHERE mr.material_request_type = "Subcontracting" AND 
+										mri.item_code = "{0}" AND
+										mri.custom_sub_assembly_item = "{1}" AND 
+										mri.production_plan = "{2}"
+								""".format(row.get("production_item"), row.get("name"), production_plan))
+			
+			if len(mr_data) < 1:
+				valid_items.append(row)
+	
+	return valid_items
+
+@frappe.whitelist()
+def create_subcontracting_material_request_for_production_plan(assembly_items, production_plan):
+	assembly_items = json.loads(assembly_items)
+
+	mr = frappe.new_doc("Material Request")
+	mr.material_request_type = "Subcontracting"
+	mr.transaction_date = getdate(nowdate())
+
+	for sub_items in assembly_items:
+		# if sub_items.get("__checked") == 1:
+		mr.append("items", {
+			"item_code": sub_items["production_item"],
+			"schedule_date": getdate(nowdate()),
+			"qty": sub_items["qty"],
+			"uom" : sub_items["uom"],
+			"stock_uom" : sub_items["stock_uom"],
+			"production_plan": production_plan,
+			"custom_sub_assembly_item": sub_items["assembly_item_ref"]
+		})
+
+	mr.save(ignore_permissions=True)
+	frappe.msgprint(_("Material Request {0} Created.".format(get_link_to_form("Material Request",mr.name)) ))
+	return mr.name
+
+def create_subcontract_bom_from_material_request(self, method):
+	if self.material_request_type == "Subcontracting":
+		service_item = frappe.db.get_single_value("Mechwell Setting MW", "service_item_for_subcontract")
+		if len(self.items) > 0:
+			for row in self.items:
+				is_sub_contracted_item, default_bom = frappe.db.get_value("Item", row.item_code, ["is_sub_contracted_item", "default_bom"])
+				if is_sub_contracted_item and default_bom and not frappe.db.exists("Subcontracting BOM", {"finished_good": row.item_code}):
+					sbom = frappe.new_doc("Subcontracting BOM")
+					sbom.finished_good = row.item_code
+
+					sbom.service_item = service_item
+
+					sbom.save(ignore_permissions=True)
+					frappe.msgprint(_("Subcontracting BOM {0} Created.".format(get_link_to_form("Subcontracting BOM",sbom.name))))
+				else:
+					frappe.msgprint(_("Subcontracting BOM for the Finished Good {0} is already Exists".format(row.item_code)))
