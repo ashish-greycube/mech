@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_bulk_edit": 1,
  "allow_rename": 1,
  "autoname": "field:name1",
  "creation": "2025-05-27 12:33:25.123067",
@@ -116,6 +117,7 @@
    "fieldtype": "Section Break"
   },
   {
+   "allow_bulk_edit": 1,
    "depends_on": "eval:doc.import_excel",
    "fieldname": "bom_item_details_mw",
    "fieldtype": "Table",
@@ -132,14 +134,13 @@
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
- "is_submittable": 1,
  "links": [
   {
    "link_doctype": "BOM Creator",
    "link_fieldname": "custom_bom_uploader_ref"
   }
  ],
- "modified": "2026-05-07 12:09:08.831737",
+ "modified": "2026-07-31 12:11:44.347240",
  "modified_by": "Administrator",
  "module": "Mech",
  "name": "BOM Uploader MW",
@@ -156,12 +157,9 @@
    "report": 1,
    "role": "System Manager",
    "share": 1,
-   "submit": 1,
    "write": 1
   },
   {
-   "amend": 1,
-   "cancel": 1,
    "create": 1,
    "email": 1,
    "export": 1,
@@ -170,12 +168,9 @@
    "report": 1,
    "role": "DIRECTOR",
    "share": 1,
-   "submit": 1,
    "write": 1
   },
   {
-   "amend": 1,
-   "cancel": 1,
    "create": 1,
    "email": 1,
    "export": 1,
@@ -184,12 +179,9 @@
    "report": 1,
    "role": "Manufacturing User",
    "share": 1,
-   "submit": 1,
    "write": 1
   },
   {
-   "amend": 1,
-   "cancel": 1,
    "create": 1,
    "email": 1,
    "export": 1,
@@ -198,12 +190,9 @@
    "report": 1,
    "role": "Manufacturing Manager",
    "share": 1,
-   "submit": 1,
    "write": 1
   },
   {
-   "amend": 1,
-   "cancel": 1,
    "create": 1,
    "email": 1,
    "export": 1,
@@ -212,12 +201,9 @@
    "report": 1,
    "role": "Projects User",
    "share": 1,
-   "submit": 1,
    "write": 1
   },
   {
-   "amend": 1,
-   "cancel": 1,
    "create": 1,
    "email": 1,
    "export": 1,
@@ -226,12 +212,9 @@
    "report": 1,
    "role": "Projects Manager",
    "share": 1,
-   "submit": 1,
    "write": 1
   },
   {
-   "amend": 1,
-   "cancel": 1,
    "create": 1,
    "email": 1,
    "export": 1,
@@ -240,12 +223,9 @@
    "report": 1,
    "role": "Purchase User",
    "share": 1,
-   "submit": 1,
    "write": 1
   },
   {
-   "amend": 1,
-   "cancel": 1,
    "create": 1,
    "email": 1,
    "export": 1,
@@ -254,7 +234,6 @@
    "report": 1,
    "role": "Purchase Manager",
    "share": 1,
-   "submit": 1,
    "write": 1
   }
  ],

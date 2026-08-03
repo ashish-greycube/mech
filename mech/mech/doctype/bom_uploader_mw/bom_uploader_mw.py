@@ -22,20 +22,22 @@ from frappe.desk.utils import provide_binary_file
 from erpnext.manufacturing.doctype.bom_creator.bom_creator import get_parent_row_no
 
 TABLE_HEADERS = [
-			"Row No",
-			"Parent FG",
-			"Sr No",
-			"User Input",
-			"Description",
-			"Length",
-			"Width",
-			"OD",
-			"ID",
-			"Thickness",
-			"Material Type",
-			"Qty",
-			"GAD/MFG",
-		]
+	"Row No",
+	"Parent FG",
+	"Sub Assembly Item",
+	"Matched Item",	
+	"Sr No",
+	"User Input",
+	"Description",
+	"Length",
+	"Width",
+	"OD",
+	"ID",
+	"Thickness",
+	"Material Type",
+	"Qty",
+	"GAD/MFG",
+]
 
 class BOMUploaderMW(Document):
 	def validate(self):
@@ -47,21 +49,28 @@ class BOMUploaderMW(Document):
 		self.set_matched_item_in_bom_items()
 		self.check_if_item_is_bought_out_or_restricted()
 		self.calculate_raw_material_weight()
-		# self.make_sub_assembly_items()
-		# self.make_bom_creator()
 
-	def before_submit(self):
+	# ----------------------------------------------------------------
+	# Function Called on Click of Create BOM Creator button
+	# ----------------------------------------------------------------
+	@frappe.whitelist()
+	def validate_conditions_and_create_bom_creator(self):
 		self.check_if_all_matched_items_found_and_weigth_calculated()
 		self.make_sub_assembly_items()
-	
-	def on_submit(self):
 		self.make_bom_creator()
-	
-	def on_cancel(self):
-		self.delete_all_sub_assembly_items()
+
+	# ----------------------------------------------------------------
+	# This function was used to delete created sub assemblies on 
+	# Cancel of BOM Uploader
+	# Removed in new customization
+	# ----------------------------------------------------------------
+	# def on_cancel(self):
+	# 	self.delete_all_sub_assembly_items()
 
 
-	###### get connected sales order of item ######
+	# ----------------------------------------------------------------
+	# Function to Get Connected Sales Order Of Item 
+	# ----------------------------------------------------------------
 	@frappe.whitelist()
 	def get_sales_order(self):
 		so_item = frappe.db.get_value('Sales Order Item', {'item_code': self.dam_code}, 'parent')
@@ -69,13 +78,16 @@ class BOMUploaderMW(Document):
 			self.order_no = ""
 			self.client = ""
 			self.project = ""
-			frappe.msgprint(_("For Item {0} no Sales Order Found.").format(self.dam_code), alert=1)
+			frappe.msgprint(_("For Item {0} No Sales Order Found.").format(self.dam_code), alert=1)
 		else:
 			customer, project = frappe.db.get_value('Sales Order', so_item, ['customer', 'project'])
 			self.order_no = so_item
 			self.client = customer
 			self.project = project
 
+	# ----------------------------------------------------------------
+	# Function to Read Data Of Attached Excel 
+	# ----------------------------------------------------------------
 	@frappe.whitelist()
 	def read_excel(self):
 		file_doc = frappe.get_doc("File", {"file_url": self.import_excel})
@@ -83,161 +95,173 @@ class BOMUploaderMW(Document):
 
 		return data
 
-	###### Excel validation  ######
+	# ----------------------------------------------------------------
+	# Function to Validate Attached Excel For Below Cases
+	# - Validate File Name
+	# - Check Data Exists
+	# - Validate Mandatory Fields
+	# - Validate Parent & Child Relationship
+	# - Fill Item Details Table
+	# ----------------------------------------------------------------
 	def validate_imported_excel(self, excel_data):
 
 		if len(self.bom_item_details_mw) < 1:
-			# validate file name
+			# 1. Validate File Name
 			file_name = frappe.db.get_value('File', { 'file_url': self.import_excel}, 'file_name')
 			if file_name and self.name not in file_name:
 				frappe.throw(_("Import Excel File name should be starts from {0}").format(self.name))
 
-			# check table exists or not
+			# 2. Check Data Exists
 			if len(excel_data) < 9:
 				frappe.throw(_("Please add table data in excel"))
 
-			# print(excel_data, '------------excel_data------------')
-
+			# Convert raw data into Key-Value Format
 			excel_table_data = self.get_excel_table_data(excel_data)
 
-			alphabetic_items_details, alphanumeric_items_details = self.create_level_1_and_2_item_lists(excel_table_data)
+			# Build Item Level, 
+			# Leaf items: no children — their own code never appears as parent_fg on any other row. 
+			# They terminate a branch and represent an actual physical part (raw material or bought-out component), 
+			# which is why they need Matched Item / material attributes.
+			
+			# Non-leaf items: have children — their own code appears as parent_fg on one or more other rows. 
+			# They're structural/grouping nodes that become sub-assembly Items, not physical materials themselves.
+			item_levels, leaf_items, non_leaf_items = self.build_item_tree_info(excel_table_data)
 			table_header_col = excel_data[7]
-
-			# print(len(alphabetic_items_details), "============alphabetic_items_details============")
-			# print(len(alphanumeric_items_details), "============alphanumeric_items_details============")
 
 			self.validate_excel_columns(table_header_col)
 			self.check_in_excel_all_matrial_type_exists(excel_table_data)
-			self.validate_mandatory_fields_in_excel(excel_table_data, alphanumeric_items_details)
-			self.validate_naming_and_sr_no_of_items(excel_table_data)
-			self.fill_bom_item_details_table(excel_table_data, alphabetic_items_details)
+			self.validate_mandatory_fields_in_excel(excel_table_data, leaf_items)
+			self.validate_naming_and_sr_no_of_items(excel_table_data, leaf_items)
+			self.fill_bom_item_details_table(excel_table_data, item_levels, leaf_items)
 
+	# ----------------------------------------------------------------
+	# Function to Convert Raw Data Into Key, Value Format Table Data
+	# ----------------------------------------------------------------
 	def get_excel_table_data(self, excel_data):
 		data_len = len(excel_data)
 
 		table_data = []
 		for idx in range(8, data_len):
 			row = excel_data[idx]
+			# This condition will check for None values in all cells of Row
 			if all(v is None for v in row) == False:
-
-				##### remove blank row for data #####
+				# Remove Blank Row(Rows in which value is '')
 				blank_row = True
 				for a in row:
 					if cstr(a).strip() != '':
 						blank_row = False
 
-				# print(blank_row, '-------------blank_row---------------')
 				if blank_row == False:	
 					table_data.append({
 						"idx": idx + 1, 
 						"row_no": row[0],
 						"parent_fg": row[1],
-						# "bom_item_code": row[2],
-						"sr_no": row[2],
-						"user_input": row[3],
-						"Description": row[4],
-						"Length": row[5],
-						"Width": row[6],
-						"OD": row[7],
-						"ID": row[8],
-						"Thickness": row[9],
-						"material_type": row[10],
-						"Qty": row[11],
-						"gad_mfg": row[12]
+						"sub_assembly_item": row[2],
+						"matched_item": row[3],
+						"sr_no": row[4],
+						"user_input": row[5],
+						"description": row[6],
+						"length": row[7],
+						"width": row[8],
+						"od": row[9],
+						"id": row[10],
+						"thickness": row[11],
+						"material_type": row[12],
+						"qty": row[13],
+						"gad_mfg": row[14]
 					})
 			else:
 				pass
 
 		return table_data
 
-	def validate_naming_and_sr_no_of_items(self, excel_table_data):
-		naming_errors = []
-		alphabets = []
-		for item in excel_table_data:
-			###### check level 1 item's sr no - must be unique & alphabetic ######
+	# ----------------------------------------------------------------
+	# Function to Generate Tree/Table Data From Excel Raw Data
+	# ----------------------------------------------------------------
+	def build_item_tree_info(self, excel_table_data):
+		"""
+		Positional (depth-first, pre-order) parent resolution. Assumes each
+		row's children are entered immediately below it, before any sibling/
+		uncle branch starts. This lets the same Sub Assembly Item code be
+		reused as a placement under different parents at different levels
+		(e.g. a shared sub-assembly used in more than one place in the tree)
+		without the levels clashing.
 
-			if item.get("parent_fg") == self.dam_code:
-				if item.get("sr_no") and item.get("sr_no").isalpha() == False:
-					msg1 = (
-						"In Excel Line No - {0}, Sr No should be alphabetic not {1}"
-					).format(item.get("idx"), item.get("sr_no"))
-					naming_errors.append(msg1)
-					# frappe.throw(_("In Excel Line No - {0}, Sr No should be alphabetic not {1}").format(item.get('idx'), item.get('sr_no')))
-				if item.get("sr_no") and item.get("sr_no") not in alphabets:
-					alphabets.append(item.get("sr_no"))
-				elif item.get("sr_no") in alphabets:
-					msg2 = ("SR No {0} exists multiple time.").format(item.get("sr_no"))
-					naming_errors.append(msg2)
-					# frappe.throw(_('SR No {0} exists multiple time.').format(item.get('sr_no')))
-			else:
-				###### check level 2 item's naming format ######
+		Leaf vs. non-leaf is decided by whether a row's own code is actually
+		referenced as Parent FG by some other row — NOT by whether Sub
+		Assembly Item is blank, since it can be filled in on every row
+		(leaf and non-leaf alike).
 
-				dam_code = self.dam_code
-				pattern = re.compile(rf"^{re.escape(dam_code)}-[A-Z]+$")
-				if not pattern.match(item.get("parent_fg")) and item.get("parent_fg"):
-					msg3 = ("In Excel Line No - {0}, Incorrect Naming format of Parent FG {1}").format(item.get("idx"), item.get("parent_fg"))
-					naming_errors.append(msg3)
-					# frappe.throw(_("In Excel Line No - {0}, Incorrect Naming format of Parent FG {1}").format(item.get('idx'), item.get('parent_fg')))
+		Returns:
+			item_levels: dict {idx: level (int, 1-based)} — keyed by row idx,
+				not by code, since the same code can appear at different
+				levels in different placements.
+			leaf_items: rows with no children (need Matched Item / weight calc)
+			non_leaf_items: rows with children (structural sub-assembly rows)
+		"""
+		parent_codes_referenced = {
+			row.get("parent_fg") for row in excel_table_data if row.get("parent_fg")
+		}
 
-		if len(naming_errors) > 0:
-			frappe.throw(
-				"Please Correct Below Naming Errors: <br> {0}".format(
-					",<br>".join((ele if ele != None else "") for ele in naming_errors)
-				)
-			)
+		item_levels = {}
+		leaf_items, non_leaf_items = [], []
+		stack = []  # [(code, level), ...] currently open ancestors
 
-	def create_level_1_and_2_item_lists(self, excel_table_data):
-		alphabetic_items = []
-		alphanumeric_items = []
 		for row in excel_table_data:
-			sr_no = row.get("sr_no")
-			if sr_no and sr_no.isalpha() == False:
-				alphanumeric_items.append(row)
+			parent_fg = row.get("parent_fg")
+			own_code = row.get("sub_assembly_item")
+			idx = row.get("idx")
+			is_non_leaf = bool(own_code) and own_code in parent_codes_referenced
+
+			if parent_fg == self.dam_code:
+				# Back to the FG root - close every previously open branch
+				stack = []
+				level = 1
 			else:
-				alphabetic_items.append(row)
+				while stack and stack[-1][0] != parent_fg:
+					stack.pop()
+				if not stack:
+					frappe.throw(
+						_("In Excel Line No - {0}, Parent FG {1} not found — it must match the FG Item {2} or a Sub Assembly Item still open above this row").format(
+							idx, parent_fg, self.dam_code
+						)
+					)
+				level = stack[-1][1] + 1
 
-		return alphabetic_items, alphanumeric_items
+			item_levels[idx] = level
 
+			if is_non_leaf:
+				if any(code == own_code for code, _ in stack):
+					frappe.throw(
+						_("In Excel Line No - {0}, Item {1} cannot be its own ancestor — circular reference detected").format(idx, own_code)
+					)
+				stack.append((own_code, level))
+				non_leaf_items.append(row)
+			else:
+				leaf_items.append(row)
+
+		return item_levels, leaf_items, non_leaf_items
+
+	# ----------------------------------------------------------------
+	# Function to Validate Excel Columns
+	# ----------------------------------------------------------------
 	def validate_excel_columns(self, excel_column):
-		# print(excel_column)
 		a = excel_column
 		b = TABLE_HEADERS
-		# print(list(zip(a, b)), '---------zip(a, b)-------')
 		is_equal = all(a == b for a, b in zip(a, b))
 		if not is_equal:
-			frappe.throw(_("In excel row 8 : Table Header Columns Must Be {0}").format(
-					TABLE_HEADERS))
-	
-	#################### ToDo #############################		
-	def validate_parent_fg(self, alphabetic_items, alphanumeric_items):
-		parent_gf_list = []
-		for alpha in alphabetic_items:
-			item_name = alpha.get("parent_fg") + "-" + alpha.get("sr_no")
-			if item_name not in parent_gf_list:
-				parent_gf_list.append(parent_gf_list)
+			frappe.throw(_("In excel row 8 : Table Header Columns Must Be {0}").format(TABLE_HEADERS))
 
-		print(parent_gf_list, "==========parent_gf_list=================")
-
-		error_data = []
-		if len(parent_gf_list) > 0:
-			for row in alphanumeric_items:
-				if row.get("parent_fg") not in parent_gf_list:
-					if row.get("parent_fg") not in error_data:
-						error_data.append(row.get("parent_fg"))
-		
-		if len(error_data) > 0:
-			frappe.throw(_("Following Parent FGs are not exists: <br> {0}").format(",<br>".join((ele if ele != None else "") for ele in error_data)))
-
-
+	# ----------------------------------------------------------------
+	# Function to Check All Material Type Exists
+	# ----------------------------------------------------------------	
 	def check_in_excel_all_matrial_type_exists(self, excel_table_data):
 		material_type_list = []
-		# print(excel_table_data, "-------excel_table_data")
 		for row in excel_table_data:
 			material_type = row.get("material_type")
 			if material_type and material_type not in material_type_list:
 				material_type_list.append(material_type)
 
-		# print(material_type_list, '------------material_type_list----------------')
 		if len(material_type_list) > 0:
 			not_exists_mt = []
 			for mt in material_type_list:
@@ -245,12 +269,12 @@ class BOMUploaderMW(Document):
 					not_exists_mt.append(mt)
 
 			if len(not_exists_mt) > 0:
-				frappe.throw(_("Following material types are not exists: <br> {0}").format(
-						",<br>".join((ele if ele != None else "") for ele in not_exists_mt)))
+				frappe.throw(_("Following material types are not exists: <br> {0}").format(",<br>".join((ele if ele != None else "") for ele in not_exists_mt)))
 
-	def validate_mandatory_fields_in_excel(
-		self, excel_table_data, alphanumeric_items_details
-	):
+	# ----------------------------------------------------------------
+	# Function to Validate Mandatory Fields In Excel
+	# ----------------------------------------------------------------
+	def validate_mandatory_fields_in_excel(self, excel_table_data, leaf_items):
 		error_list = []
 		for row in excel_table_data:
 			excel_idx = row.get("idx")
@@ -263,20 +287,19 @@ class BOMUploaderMW(Document):
 				not_exists_col.append("<b>Parent FG</b>")
 			if not row.get("sr_no"):
 				not_exists_col.append("<b>SR No</b>")
-			if not row.get("Description"):
+			if not row.get("description"):
 				not_exists_col.append("<b>Description</b>")
-			if not row.get("Qty"):
+			if not row.get("qty"):
 				not_exists_col.append("<b>Qty</b>")
 			if not row.get("gad_mfg"):
 				not_exists_col.append("<b>GAD/MFG</b>")
 
-			###### validate material type for alphanumeric items ######
-			if row in alphanumeric_items_details:
+			if row in leaf_items:
+				# Validate Material Type For Leaf Item
 				if not row.get("material_type"):
 					not_exists_col.append("<b>Material Type</b>")
 
-				###### check attributes based on material type ######
-				# print(row.get("material_type"), "------------row.get")
+				# If Material Type Exists Check For It's Attributes
 				if row.get("material_type"):
 					mt = frappe.get_doc("Material Type MW", row.get("material_type"))
 					if len(mt.attributes) > 0:
@@ -284,9 +307,9 @@ class BOMUploaderMW(Document):
 							excel_column_title = frappe.db.get_value(
 								"Attribute MW", a.attribute, "excel_column_title"
 							)
-							# print(excel_column_title, '--------row.get(excel_column_title)--------')
-							if not row.get(excel_column_title):
-								attr = "<b>" + excel_column_title + "</b>"
+							lookup_key = (excel_column_title or "").strip().lower().replace(" ", "_")
+							if not row.get(lookup_key):
+								attr = "<b>" + (excel_column_title or a.attribute) + "</b>"
 								not_exists_col.append(attr)
 
 			if len(not_exists_col) > 0:
@@ -304,157 +327,227 @@ class BOMUploaderMW(Document):
 					",<br>".join((ele if ele != None else "") for ele in error_list)
 				))
 
-	def fill_bom_item_details_table(self, excel_table_data, alphabetic_items_details):
+	# ----------------------------------------------------------------
+	# Function to Validate Naming And Sr No Format Of Items
+	# ----------------------------------------------------------------
+	def validate_naming_and_sr_no_of_items(self, excel_table_data, leaf_items):
+		naming_errors = []
+		for item in excel_table_data:
+			sr_no = item.get("sr_no")
+			if not sr_no:
+				continue
+
+			if item in leaf_items:
+				# Leaf Item's Sr No Must Be Alphanumeric
+				if sr_no.isalpha():
+					msg1 = (
+						"In Excel Line No - {0}, Sr No should be alphanumeric not {1}"
+					).format(item.get("idx"), sr_no)
+					naming_errors.append(msg1)
+			else:
+				# Non Leaf Item's Sr No Must Be Alphabetic
+				if not sr_no.isalpha():
+					msg2 = (
+						"In Excel Line No - {0}, Sr No should be alphabetic not {1}"
+					).format(item.get("idx"), sr_no)
+					naming_errors.append(msg2)
+
+		if len(naming_errors) > 0:
+			frappe.throw(
+				"Please Correct Below Naming Errors: <br> {0}".format(
+					",<br>".join((ele if ele != None else "") for ele in naming_errors)
+				)
+			)
+
+	# ----------------------------------------------------------------
+	# Function to Fill BOM Item Details Table
+	# ----------------------------------------------------------------
+	def fill_bom_item_details_table(self, excel_table_data, item_levels, leaf_items):
 		if len(self.bom_item_details_mw) < 1:
 			self.bom_item_details_mw = []
-			# print("----------------fill_bom_item_details_table------------------" * 5)
 			for data in excel_table_data:
 				item = self.append("bom_item_details_mw", {})
 				item.row_no = data.get("row_no")
 				item.parent_fg = data.get("parent_fg")
-				# item.bom_item_code = data.get("bom_item_code")
+				item.sub_assembly_item = data.get("sub_assembly_item")
+				item.matched_item = data.get("matched_item")
 				item.sr_no = data.get("sr_no")
 				item.user_input = data.get("user_input")
-				item.description = data.get("Description")
-				item.length = data.get("Length")
-				item.width = data.get("Width")
-				item.od = data.get("OD")
-				item.id = data.get("ID")
-				item.thickness = data.get("Thickness")
+				item.description = data.get("description")
+				item.length = data.get("length")
+				item.width = data.get("width")
+				item.od = data.get("od")
+				item.id = data.get("id")
+				item.thickness = data.get("thickness")
 				item.material_type = data.get("material_type")
-				item.qty = data.get("Qty")
+				item.qty = data.get("qty")
 				item.gad_mfg = data.get("gad_mfg")
 
-				if data in alphabetic_items_details:
-					item.item_level = "Level 1"
-				else:
-					item.item_level = "Level 2"
+				item.level = item_levels.get(data.get("idx"))
+				item.is_leaf_item = 1 if data in leaf_items else 0
 
-				# if item.material_type and item.item_level == "Level 2":
-				# 	print(item.material_type, '------------', item.idx, "---------------")
-				# 	item.matched_item_list = self.get_matched_item(item)
-
+	# ----------------------------------------------------------------
+	# Function to Clear Table Data If Excel File Is Not Attached
+	# ----------------------------------------------------------------
 	def clear_table_data_if_not_attached_file(self):
 		if not self.import_excel:
 			self.bom_item_details_mw = []
 
+	# ----------------------------------------------------------------
+	# Function to Set Matched Items
+	# ----------------------------------------------------------------
 	def set_matched_item_in_bom_items(self):
 		if len(self.bom_item_details_mw) > 0:
 			count = 0
 			for item in self.bom_item_details_mw:
-				if item.item_level == "Level 2" and item.material_type and not item.matched_item:
+				if item.matched_item:
+					if not frappe.db.exists("Item", item.matched_item):
+						
+
+				if item.is_leaf_item and item.material_type and not item.matched_item:
 					field_map = attributes_field_mapping()
 
-					sub_assembly_item_group = frappe.db.get_single_value('Mechwell Setting MW', 'default_item_group_for_sub_assembly')
-					sql = "SELECT name FROM `tabItem` WHERE custom_material_type = '{0}' AND item_group !='{1}' ".format(item.material_type, sub_assembly_item_group)
+					sub_assembly_item_group = frappe.db.get_single_value(
+						"Mechwell Setting MW", "default_item_group_for_sub_assembly"
+					)
+					sql = "SELECT name FROM `tabItem` WHERE custom_material_type = '{0}' AND item_group !='{1}' ".format(
+						item.material_type, sub_assembly_item_group
+					)
 					conditions = []
 					near_by_value = {}
 
-					attr_doc = frappe.get_doc('Material Type MW', item.material_type)
+					attr_doc = frappe.get_doc("Material Type MW", item.material_type)
 
 					is_sub_assembly_exists = False
 					sub_assembly_keyword = ""
 					if len(attr_doc.attributes) > 0:
-						
+
 						for att in attr_doc.attributes:
 							att_map = frappe._dict(field_map[att.attribute])
-							# print(att_map, "==============att_map==========")
 
-							if att.attribute == 'Sub Assembly Keyword':
-								conditions.append(" ( %({})s like concat('%%', {}, '%%') ) ".format(att_map.field_name_in_bom_uploader, att_map.field_name_in_item_dt))
-								is_sub_assembly_exists = True
-								sub_assembly_keyword = item.get(att_map.field_name_in_bom_uploader) or ""
-							elif att.match_type == '>=':
-								conditions.append(" {field_name_in_item_dt} >=  %({field_name_in_bom_uploader})s ".format(**att_map))
-								max_value = frappe.db.sql_list(
-									"SELECT min({field_name_in_item_dt}) FROM `tabItem` WHERE custom_material_type = '{0}' AND item_group !='{1}' AND {field_name_in_item_dt} >= %({field_name_in_bom_uploader})s".format(item.material_type, sub_assembly_item_group, **att_map),
-									item.as_dict()
+							if att.attribute == "Sub Assembly Keyword":
+								conditions.append(
+									" ( %({})s like concat('%%', {}, '%%') ) ".format(
+										att_map.field_name_in_bom_uploader,
+										att_map.field_name_in_item_dt,
+									)
 								)
-								# print(max_value, "========================max_value============================")
-								if max_value and max_value[0]:
-									near_by_value[att_map.field_name_in_item_dt] = max_value[0]
+								is_sub_assembly_exists = True
+								sub_assembly_keyword = (
+									item.get(att_map.field_name_in_bom_uploader) or ""
+								)
+							elif att.match_type == ">=":
+								conditions.append(
+									" {field_name_in_item_dt} >=  %({field_name_in_bom_uploader})s ".format(
+										**att_map
+									)
+								)
+								max_value = frappe.db.sql_list(
+									"SELECT min({field_name_in_item_dt}) FROM `tabItem` WHERE custom_material_type = '{0}' AND item_group !='{1}' AND {field_name_in_item_dt} >= %({field_name_in_bom_uploader})s".format(
+										item.material_type,
+										sub_assembly_item_group,
+										**att_map,
+									),
+									item.as_dict(),
+								)
 
-							elif att.match_type == '<=':
-								conditions.append(" {field_name_in_item_dt} <=  %({field_name_in_bom_uploader})s ".format(**att_map))
+								if max_value and max_value[0]:
+									near_by_value[
+										att_map.field_name_in_item_dt
+									] = max_value[0]
+
+							elif att.match_type == "<=":
+								conditions.append(
+									" {field_name_in_item_dt} <=  %({field_name_in_bom_uploader})s ".format(
+										**att_map
+									)
+								)
 								min_value = frappe.db.sql_list(
-									"SELECT max({field_name_in_item_dt}) FROM `tabItem` WHERE custom_material_type = '{0}' AND item_group !='{1}' AND {field_name_in_item_dt} <= %({field_name_in_bom_uploader})s AND {field_name_in_item_dt} > 0".format(item.material_type, sub_assembly_item_group, **att_map),
-									item.as_dict()
+									"SELECT max({field_name_in_item_dt}) FROM `tabItem` WHERE custom_material_type = '{0}' AND item_group !='{1}' AND {field_name_in_item_dt} <= %({field_name_in_bom_uploader})s AND {field_name_in_item_dt} > 0".format(
+										item.material_type,
+										sub_assembly_item_group,
+										**att_map,
+									),
+									item.as_dict(),
 								)
 								if min_value and min_value[0]:
-									near_by_value[att_map.field_name_in_item_dt] = min_value[0]
+									near_by_value[
+										att_map.field_name_in_item_dt
+									] = min_value[0]
 
-							elif att.match_type == '==':
-								conditions.append(" ( {} = %({})s ) ".format(att_map.field_name_in_item_dt, att_map.field_name_in_bom_uploader))
-						
-						# print(conditions, "---------------------conditionsss------", attr_doc.name)
+							elif att.match_type == "==":
+								conditions.append(
+									" ( {} = %({})s ) ".format(
+										att_map.field_name_in_item_dt,
+										att_map.field_name_in_bom_uploader,
+									)
+								)
+
 						if conditions:
 							sql = sql + " AND " + " AND ".join(conditions)
 
-						# print(sql, "--------------sql----------------------")
-						matched_items = frappe.db.sql(sql, item.as_dict(), pluck='name')
-						# print(matched_items, "========matched_items=====")
+						matched_items = frappe.db.sql(sql, item.as_dict(), pluck="name")
 
 						final_matched_items = []
-						# exact_matched_items = []
 						if len(matched_items) > 0:
 							if near_by_value:
-								# print(near_by_value, "===========near_by_value=======")
 
 								for i in matched_items:
-									item_doc = frappe.get_doc('Item', i)
-									# item_values = {}
+									item_doc = frappe.get_doc("Item", i)
 
 									for key, value in near_by_value.items():
-										# item_values[key] = item_doc.get(key)
-										if key in item_doc.as_dict() and item_doc.get(key) == value:
+										if (
+											key in item_doc.as_dict()
+											and item_doc.get(key) == value
+										):
 											if item_doc.name not in final_matched_items:
 												final_matched_items.append(item_doc.name)
 												continue
-									
-									# print(item_values, "----------------item_values------------")
-									# if near_by_value == item_values:
-									# 	exact_matched_items.append(item_doc.name)
 
-								# print(exact_matched_items, "==================exact_matched_items=============")	
-
-							# print(final_matched_items, "===================final_matched_items=============")
 							if len(final_matched_items) > 0:
-								item.matched_item_list = ','.join(final_matched_items)
+								item.matched_item_list = ",".join(final_matched_items)
 								if len(final_matched_items) == 1:
 									item.matched_item_list = final_matched_items[0]
 									item.matched_item = final_matched_items[0]
-									
+
 								else:
 									if is_sub_assembly_exists == True:
-										exact_matched_items = check_exact_matched_sub_assembly_item(matched_items, sub_assembly_keyword)
+										exact_matched_items = (
+											check_exact_matched_sub_assembly_item(
+												matched_items, sub_assembly_keyword
+											)
+										)
 										if len(exact_matched_items) == 1:
 											item.matched_item = exact_matched_items[0]
 											item.matched_item_list = exact_matched_items[0]
-											# item.status = "Match"
 										elif len(exact_matched_items) > 1:
-											item.matched_item_list = ','.join(exact_matched_items)
+											item.matched_item_list = ",".join(
+												exact_matched_items
+											)
 											item.status = "Multi Match"
 										else:
 											item.status = "Multi Match"
 									else:
 										item.status = "Multi Match"
-								
-
 							else:
-								item.matched_item_list = ','.join(matched_items)
+								item.matched_item_list = ",".join(matched_items)
 								if len(matched_items) == 1:
 									item.matched_item_list = matched_items[0]
 									item.matched_item = matched_items[0]
-									# item.status = "Match"
 								else:
 									if is_sub_assembly_exists == True:
-										exact_matched_items = check_exact_matched_sub_assembly_item(matched_items, sub_assembly_keyword)
+										exact_matched_items = (
+											check_exact_matched_sub_assembly_item(
+												matched_items, sub_assembly_keyword
+											)
+										)
 										if len(exact_matched_items) == 1:
 											item.matched_item = exact_matched_items[0]
 											item.matched_item_list = exact_matched_items[0]
-											# item.status = "Match"
 										elif len(exact_matched_items) > 1:
-											item.matched_item_list = ','.join(exact_matched_items)
+											item.matched_item_list = ",".join(
+												exact_matched_items
+											)
 											item.status = "Multi Match"
 										else:
 											item.status = "Multi Match"
@@ -462,24 +555,33 @@ class BOMUploaderMW(Document):
 										item.status = "Multi Match"
 
 							if item.matched_item:
-								item_group, custom_wmf = frappe.db.get_value("Item", item.matched_item, ["item_group", "custom_wmf"])
+								item_group, custom_wmf = frappe.db.get_value(
+									"Item", item.matched_item, ["item_group", "custom_wmf"]
+								)
 								item.matched_item_group = item_group
 								item.item_wmf = custom_wmf
 								item.status = "Match"
-						
+
 						else:
 							item.status = "Not Found"
+				
 
 				count += 1
-				frappe.publish_progress(count/len(self.bom_item_details_mw) * 100, title='Finding Matching Items', description='') 				
-
+				frappe.publish_progress(
+					count / len(self.bom_item_details_mw) * 100,
+					title="Finding Matching Items",
+					description="",
+				)
+		
+	# ----------------------------------------------------------------
+	# Function to Check Item is Boughtout / Restricted
+	# ----------------------------------------------------------------
 	def check_if_item_is_bought_out_or_restricted(self):
 		mech_setting = frappe.get_doc('Mechwell Setting MW')
 		restricted_item_groups = []
 		if len(mech_setting.restricted_item_groups) > 0:
 			for d in mech_setting.restricted_item_groups:
 				restricted_item_groups.append(d.restricted_item_group)
-		# print(restricted_item_groups, "===================restricted_item_groups==========================")
 
 		default_item_group_for_bought_out = mech_setting.default_item_group_for_bought_out
 		if not default_item_group_for_bought_out:
@@ -487,7 +589,7 @@ class BOMUploaderMW(Document):
 
 		if len(self.bom_item_details_mw) > 0:
 			for item in self.bom_item_details_mw:
-				if item.item_level == "Level 2" and item.matched_item:
+				if item.is_leaf_item and item.matched_item:
 					item_group = frappe.db.get_value('Item', item.matched_item, 'item_group')
 					item.create_subassembly_item = "Yes"
 
@@ -497,7 +599,6 @@ class BOMUploaderMW(Document):
 						if check_if_item_is_bought_out_or_restricted(rig, item_group):
 							is_restricted_item_group = True
 							break
-					# print(is_bought_out, "===============is_bought_out=============")
 					if is_bought_out:
 						item.is_bought_out = 'Yes'
 						item.create_subassembly_item = "No"
@@ -506,16 +607,17 @@ class BOMUploaderMW(Document):
 						
 					if is_restricted_item_group and item.is_bought_out == "No":
 						item.create_subassembly_item = "No"
-	
-	def calculate_raw_material_weight(self):
 
+	# ----------------------------------------------------------------
+	# Function to Calculates Each Item's Weight & Total Weight
+	# ----------------------------------------------------------------
+	def calculate_raw_material_weight(self):
 		total_raw_weight = 0
 		for item in self.bom_item_details_mw:
-			if item.item_level == "Level 2" and item.matched_item:
+			if item.is_leaf_item and item.matched_item:
 				if item.is_bought_out == "Yes":
 					item.raw_material_weight = item.qty * (item.item_wmf or 0) 
 				else:
-					# print(item.matched_item, "========item.matched_item_list====")
 					ig, wmf = frappe.db.get_value("Item", item.matched_item, ["item_group", "custom_wmf"])
 					item_group = frappe.get_doc('Item Group', ig)
 					formula = item_group.custom_raw_material_weight_formula
@@ -541,43 +643,43 @@ class BOMUploaderMW(Document):
 						
 					total_weight = frappe.safe_eval(formula.strip(), None, formula_params)
 
-					# print(total_weight, "-----------total_weight-----------")
 					item.raw_material_weight = total_weight or 0
 
 				total_raw_weight = total_raw_weight + (item.raw_material_weight or 0)
 				self.total_weight = total_raw_weight
 
+	# ----------------------------------------------------------------------------
+	# Function to Check All Match Items & Weights is Calculated Before Submit
+	# ----------------------------------------------------------------------------
 	def check_if_all_matched_items_found_and_weigth_calculated(self):
 		if len(self.bom_item_details_mw) > 0:
 			item_not_found = []
 			weight_not_calculated = []
 			for row in self.bom_item_details_mw:
-				if not row.matched_item and row.item_level == "Level 2":
+				if not row.matched_item and row.is_leaf_item:
 					item_not_found.append(cstr(row.idx))
-				if row.item_level == "Level 2" and (not row.raw_material_weight or row.raw_material_weight == 0):
+				if row.is_leaf_item and (not row.raw_material_weight or row.raw_material_weight == 0):
 					weight_not_calculated.append(cstr(row.idx))
 			
-			# print(item_not_found, "==========item_not_found======")
 			if len(item_not_found) > 0:
 				frappe.throw(_("For Below Row Numbers Match Item Not Found.<br> <b>{0}</b>").format(", ".join((ele if ele != None else "") for ele in item_not_found)))
 
-			### weight must be calculated..............
-			# if len(weight_not_calculated) > 0:
-			# 	frappe.throw(_("For Below Row Numbers Raw Material Weight Not Calculated.<br> <b>{0}</b>").format(", ".join((ele if ele != None else "") for ele in weight_not_calculated)))
+			if len(weight_not_calculated) > 0:
+				frappe.throw(_("For Below Row Numbers Weight Is Not Calculated.<br> <b>{0}</b>").format(", ".join((ele if ele != None else "") for ele in item_not_found)))
 
+	# ----------------------------------------------------------------------------
+	# Function to Create Sub Assembly Items Before Submit
+	# ----------------------------------------------------------------------------
 	def make_sub_assembly_items(self):
 		if len(self.bom_item_details_mw) > 0:
 			sub_assembly_item_group = frappe.db.get_single_value('Mechwell Setting MW', 'default_item_group_for_sub_assembly')
 			for row in self.bom_item_details_mw:
-				if row.create_subassembly_item != "No":
+				if row.create_subassembly_item != "No" and not frappe.db.exists("Item", row.sub_assembly_item):
 					new_item = frappe.new_doc("Item")
-					new_item.item_code = row.parent_fg + "-" + row.sr_no
-					new_item.item_name = row.parent_fg + "-" + row.sr_no +  ((" " + row.user_input) if row.user_input else "")
+					new_item.item_code = row.sub_assembly_item
+					new_item.item_name = row.sub_assembly_item + ((" " + row.user_input) if row.user_input else "")
 					new_item.item_group = sub_assembly_item_group
 					new_item.description = row.description
-					# new_item.is_stock_item = 1
-					# new_item.stock_uom = "Nos"
-					# new_item.custom_material_type = row.material_type
 					new_item.custom_length = row.length
 					new_item.custom_width = row.width
 					new_item.custom_outer_diameter = row.od
@@ -588,6 +690,9 @@ class BOMUploaderMW(Document):
 
 					row.sub_assembly_item = new_item.name
 
+	# ----------------------------------------------------------------------------
+	# Function to Create BOM Creater On Submit Of BOM Uploader
+	# ----------------------------------------------------------------------------
 	def make_bom_creator(self):
 		if len(self.bom_item_details_mw) > 0:
 			bom = frappe.new_doc("BOM Creator")
@@ -598,70 +703,79 @@ class BOMUploaderMW(Document):
 			bom.custom_bom_uploader_ref = self.name
 			bom.project = self.project
 
+			# Positional (depth-first, pre-order) parent resolution — mirrors
+			# build_item_tree_info. A plain DB lookup by Sub Assembly Item code
+			# can't disambiguate a reused code (the same sub-assembly placed
+			# under multiple different parents), so we walk the rows in order
+			# and track which ancestor is currently open instead.
+			stack = []  # [(sub_assembly_item, bom.items row idx), ...] currently open ancestors
+
 			for row in self.bom_item_details_mw:
 				item = bom.append("items", {})
-				parent_idx = frappe.db.get_value("BOM Item Details MW", {"sub_assembly_item": row.parent_fg}, "idx")
 
-				### find parent idx from bom creator item table
-				# parent_idx = None
-				# if len(bom.items) > 0:
-				# 	for pr_idx in bom.items:
-				# 		if pr_idx.item_code == row.parent_fg:
-				# 			parent_idx = pr_idx.idx
-				# 			break
+				if row.parent_fg == self.dam_code:
+					stack = []
+					parent_idx = None
+				else:
+					while stack and stack[-1][0] != row.parent_fg:
+						stack.pop()
+					if not stack:
+						frappe.throw(
+							_("Row No {0}: Parent FG {1} not found while building BOM Creator").format(row.row_no, row.parent_fg)
+						)
+					parent_idx = stack[-1][1]
 
 				item.fg_item = row.parent_fg
 				item.qty = row.qty
 				item.custom_sr_no = row.sr_no
 				item.parent_row_no = parent_idx
 				if row.gad_mfg == "GAD":
-						item.allow_alternative_item = 0
+					item.allow_alternative_item = 0
 				else:
 					item.allow_alternative_item = 1
-				
+
 				if row.create_subassembly_item == "No":
 					item.is_expandable = 0
 					item.item_code = row.matched_item
 					if row.is_bought_out == "Yes":
 						item.custom_is_bought_out = row.is_bought_out
 						item.qty = row.raw_material_weight
-
-					# print(item.item_code, "=============== Bought out=======")
-
 				else:
 					item.item_code = row.sub_assembly_item
-					# print(item.item_code, "===============")
 					item.is_expandable = 1
-					# print(row.parent_fg, item.parent_row_no, "================item.parent_row_no================", parent_idx)
-
-					if row.matched_item and row.item_level == "Level 2":
+					if row.matched_item and row.is_leaf_item:
 						raw_item = bom.append("items", {})
 						raw_item.item_code = row.matched_item
 						raw_item.fg_item = item.item_code
 						raw_item.qty = row.raw_material_weight
 						raw_item.parent_row_no = item.idx
-						# print(raw_item.parent_row_no, "================raw_item.parent_row_no")
 						if row.gad_mfg == "GAD":
 							raw_item.allow_alternative_item = 0
 						else:
 							raw_item.allow_alternative_item = 1
-						
+				item.uom = frappe.db.get_value("Item", item.item_code, "stock_uom")
+				if not row.is_leaf_item:
+					stack.append((row.sub_assembly_item, item.idx))
+
 			bom.save(ignore_permissions=True)
 
+	# ----------------------------------------------------------------------------
+	# Function to Delete Sub Assembly Items On Delete Of BOM Uploader
+	# ----------------------------------------------------------------------------
 	def delete_all_sub_assembly_items(self):
 		bom_creator = frappe.db.get_value("BOM Creator", {"custom_bom_uploader_ref": self.name}, "name")
-		# print(bom_creator, "=========bom_creator=======")
 		if len(self.bom_item_details_mw) > 0 and not bom_creator:
 			for row in self.bom_item_details_mw:
 				if row.sub_assembly_item:
 					sub_assembly_item = frappe.get_doc("Item", row.sub_assembly_item)
-					# print(sub_assembly_item.name, "============sub_assembly_item======")
 					row.sub_assembly_item = ""
 					sub_assembly_item.delete()
 				
 			frappe.msgprint("Sub Assembly Items Are Deleted", alert=1)
 
-
+# ----------------------------------------------------------------------------
+# HELPER FUNCTIONS
+# ----------------------------------------------------------------------------
 def check_if_item_is_bought_out_or_restricted(default_item_group_for_bought_out_or_restricted, item_group):
 	if item_group == default_item_group_for_bought_out_or_restricted:
 		return True
@@ -679,7 +793,6 @@ def attributes_field_mapping():
 	field_map = {}
 	for d in attribute_mw:
 		field_map[d.name] = d     
-	# print(field_map)
 
 	return field_map
 
@@ -688,32 +801,15 @@ def check_exact_matched_sub_assembly_item(item_list, sub_assembly_keyword):
 		if len(item_list) > 0:
 			for item in item_list:
 				item_keyword = frappe.db.get_value('Item', item, 'custom_sub_assembly_keyword')
-				# print(item,"=======item===", item_keyword)
-				# print(item_keyword.strip().casefold(), "====item_keyword.casefold()===", sub_assembly_keyword.strip().casefold(), "===sub_assembly_keyword.casefold()===")
 				if item_keyword.strip().casefold() == sub_assembly_keyword.strip().casefold():
 					exact_matched_items.append(item)
 
 		return exact_matched_items	
 
 
-######### create excel - no formatting #########
-# @frappe.whitelist()
-# def download_formatted_excel(name=None):
-# 	doc = frappe.get_doc("BOM Uploader MW", name) if name else None
-# data = [
-# 	["", "", "Dam code", doc.dam_code],
-# 	["", "", "Order No", doc.order_no],
-# 	["", "", "Client", doc.client],
-# 	["", "", "Project", doc.project],
-# 	["", "", "Wt(kg)", doc.total_weight],
-# 	["Instruction : Please input data from row no 9. Donot put blank rows while data input"],
-# 	[],
-# 	TABLE_HEADERS,
-# ]
-
-# 	file_name = doc.name
-# 	return build_xlsx_response(data, file_name)
-
+# ----------------------------------------------------------------
+# Function to download Formatted Excel Template 
+# ----------------------------------------------------------------
 @frappe.whitelist()
 def download_formatted_excel(name=None):
 	doc = frappe.get_doc("BOM Uploader MW", name) if name else None
@@ -738,21 +834,96 @@ def download_formatted_excel(name=None):
 
 	sheet.column_dimensions['A'].width = 10
 	sheet.column_dimensions['B'].width = 12
-	sheet.column_dimensions['C'].width = 10
+	sheet.column_dimensions['C'].width = 20
 	sheet.column_dimensions['D'].width = 20
-	sheet.column_dimensions['E'].width = 20
-	sheet.column_dimensions['F'].width = 10
-	sheet.column_dimensions['G'].width = 10
+	sheet.column_dimensions['E'].width = 10
+	sheet.column_dimensions['F'].width = 40
+	sheet.column_dimensions['G'].width = 80
 	sheet.column_dimensions['H'].width = 10
 	sheet.column_dimensions['I'].width = 10
 	sheet.column_dimensions['J'].width = 10
-	sheet.column_dimensions['K'].width = 20
+	sheet.column_dimensions['K'].width = 10
 	sheet.column_dimensions['L'].width = 10
-	sheet.column_dimensions['M'].width = 10
+	sheet.column_dimensions['M'].width = 20
+	sheet.column_dimensions['N'].width = 10
+	sheet.column_dimensions['O'].width = 10
 
 	bg_fill = PatternFill(fill_type='solid', start_color='FF474C', end_color='FF474C')
 
-	cells_to_style = ['A8', 'B8', 'C8','E8', 'K8', 'L8', 'M8']
+	cells_to_style = ['A8', 'B8', 'C8', 'D8', 'E8', 'G8', 'M8', 'N8', 'O8']
+	for cell_coord in cells_to_style:
+		cell = sheet[cell_coord]
+		cell.fill = bg_fill
+
+	xlsx_file = BytesIO()
+	workbook.save(xlsx_file)
+
+	provide_binary_file(doc.name, 'xlsx', xlsx_file.getvalue())
+
+
+# ----------------------------------------------------------------
+# Function to download BOM Item Details MW in the same formatted
+# layout as the template, filled with the document's saved data
+# ----------------------------------------------------------------
+@frappe.whitelist()
+def download_filled_excel(name=None):
+	doc = frappe.get_doc("BOM Uploader MW", name) if name else None
+
+	workbook = Workbook()
+	sheet = workbook.active
+
+	rows_data = [
+		["", "", "Dam code", doc.dam_code],
+		["", "", "Order No", doc.order_no],
+		["", "", "Client", doc.client],
+		["", "", "Project", doc.project],
+		["", "", "Wt(kg)", doc.total_weight],
+		["Instruction : Please input data from row no 9. Donot put blank rows while data input"],
+		[],
+		TABLE_HEADERS,
+	]
+
+	for row in doc.bom_item_details_mw:
+		rows_data.append([
+			row.row_no,
+			row.parent_fg,
+			row.sub_assembly_item,
+			row.matched_item,
+			row.sr_no,
+			row.user_input,
+			row.description,
+			row.length,
+			row.width,
+			row.od,
+			row.id,
+			row.thickness,
+			row.material_type,
+			row.qty,
+			row.gad_mfg,
+		])
+
+	for row in rows_data:
+		sheet.append(row)
+
+	sheet.column_dimensions['A'].width = 10
+	sheet.column_dimensions['B'].width = 12
+	sheet.column_dimensions['C'].width = 20
+	sheet.column_dimensions['D'].width = 20
+	sheet.column_dimensions['E'].width = 10
+	sheet.column_dimensions['F'].width = 40
+	sheet.column_dimensions['G'].width = 80
+	sheet.column_dimensions['H'].width = 10
+	sheet.column_dimensions['I'].width = 10
+	sheet.column_dimensions['J'].width = 10
+	sheet.column_dimensions['K'].width = 10
+	sheet.column_dimensions['L'].width = 10
+	sheet.column_dimensions['M'].width = 20
+	sheet.column_dimensions['N'].width = 10
+	sheet.column_dimensions['O'].width = 10
+
+	bg_fill = PatternFill(fill_type='solid', start_color='FF474C', end_color='FF474C')
+
+	cells_to_style = ['A8', 'B8', 'C8', 'D8', 'E8', 'G8', 'M8', 'N8', 'O8']
 	for cell_coord in cells_to_style:
 		cell = sheet[cell_coord]
 		cell.fill = bg_fill

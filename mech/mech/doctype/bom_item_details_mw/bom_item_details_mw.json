@@ -9,11 +9,12 @@
   "row_no",
   "parent_fg",
   "bom_item_code",
+  "qty",
   "column_break_zolz",
   "sr_no",
   "description",
   "user_input",
-  "qty",
+  "sub_assembly_item",
   "section_break_kkse",
   "material_type",
   "length",
@@ -30,15 +31,19 @@
   "column_break_yarl",
   "is_bought_out",
   "create_subassembly_item",
-  "section_break_ohqb",
+  "section_break_dqng",
   "item_level",
+  "is_leaf_item",
+  "column_break_dsji",
+  "level",
   "matched_item_list",
-  "column_break_ntcc",
+  "section_break_ohqb",
   "matched_item",
   "matched_item_group",
+  "drawing_number",
+  "column_break_ntcc",
   "item_wmf",
-  "raw_material_weight",
-  "sub_assembly_item"
+  "raw_material_weight"
  ],
  "fields": [
   {
@@ -152,12 +157,18 @@
    "read_only": 1
   },
   {
-   "default": "Level 2",
    "fieldname": "item_level",
    "fieldtype": "Select",
    "hidden": 1,
    "label": "Item Level",
-   "options": "Level 1\nLevel 2",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_leaf_item",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Is Leaf Item",
    "read_only": 1
   },
   {
@@ -222,7 +233,6 @@
    "fieldname": "sub_assembly_item",
    "fieldtype": "Data",
    "label": "Sub Assembly Item",
-   "options": "Item",
    "read_only": 1
   },
   {
@@ -263,13 +273,33 @@
    "fieldtype": "Select",
    "label": "Create Subassembly Item",
    "options": "Yes\nNo"
+  },
+  {
+   "fieldname": "level",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Level",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_dqng",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_dsji",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "drawing_number",
+   "fieldtype": "Attach",
+   "label": "Drawing Number"
   }
  ],
  "grid_page_length": 500,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-04-20 11:40:16.763780",
+ "modified": "2026-07-31 13:36:20.701656",
  "modified_by": "Administrator",
  "module": "Mech",
  "name": "BOM Item Details MW",

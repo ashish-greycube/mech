@@ -2,35 +2,49 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("BOM Uploader MW", {
-	refresh(frm){
+	refresh(frm) {
 		$('.grid-add-row').hide()
 		$('.grid-remove-rows').hide()
-		if (frm.is_new()){
+		if (frm.is_new()) {
 			frm.dashboard.add_comment(__("<b>Please save the form to download excel for import</b>"), "blue", true);
 		}
-		// if (!frm.doc.bom_creator_ref && frm.doc.bom_creator_ref != ''){ 
-        //     frm.add_custom_button(__("Create BOM Creator"), () => {
-        //         // create_bom_creator(frm)
-        //     });
-        // }
+
+		// Button to create BOM Creator
+		if (!frm.doc.bom_creator_ref && frm.doc.bom_creator_ref != '') {
+			frm.add_custom_button(__("Create BOM Creator"), () => {
+				frm.call('validate_conditions_and_create_bom_creator', frm.doc)
+			});
+		}
+
+		// Button to download BOM Item Details MW filled in the template layout
+		if (frm.doc.dam_code && !frm.is_new() && frm.doc.bom_item_details_mw.length > 1) {
+			frm.add_custom_button(__("Download Item Details"), () => {
+				open_url_post(
+					"/api/method/mech.mech.doctype.bom_uploader_mw.bom_uploader_mw.download_filled_excel",
+					{
+						name: frm.doc.name,
+					}
+				);
+			});
+		}
 	},
-	dam_code(frm){
-		if (frm.doc.dam_code){
+	dam_code(frm) {
+		if (frm.doc.dam_code) {
 			frm.call('get_sales_order')
 		}
-		else{
+		else {
 			frm.set_value('order_no', '')
 			frm.set_value('client', '')
 			frm.set_value('project', '')
 		}
 	},
 	download_formatted_excel(frm) {
-        open_url_post(
-					"/api/method/mech.mech.doctype.bom_uploader_mw.bom_uploader_mw.download_formatted_excel",
-					{
-                        name: frm.doc.name,
-					}
-				);
+		open_url_post(
+			"/api/method/mech.mech.doctype.bom_uploader_mw.bom_uploader_mw.download_formatted_excel",
+			{
+				name: frm.doc.name,
+			}
+		);
 	},
 });
 
@@ -43,7 +57,7 @@ frappe.ui.form.on("BOM Item Details MW", {
 		let dialog = undefined
 		const dialog_field = []
 
-		if (row.status == "Not Found" || (row.status == "Match" && (!row.matched_item_list || row.matched_item_list == ''))){
+		if (row.status == "Not Found" || (row.status == "Match" && (!row.matched_item_list || row.matched_item_list == ''))) {
 			let sub_assembly_item_group = ""
 			frappe.db.get_single_value('Mechwell Setting MW', 'default_item_group_for_sub_assembly')
 				.then(item_group => {
@@ -59,7 +73,7 @@ frappe.ui.form.on("BOM Item Details MW", {
 					options: "Item",
 					read_only: 0,
 					get_query: () => {
-						return{
+						return {
 							filters: {
 								"item_group": ["!=", sub_assembly_item_group],
 								"custom_material_type": ["=", row.material_type]
@@ -74,40 +88,40 @@ frappe.ui.form.on("BOM Item Details MW", {
 			let str = row.matched_item_list || "";
 			let array = str.split(",").map(s => s.trim().replace(/'/g, ''));
 
-			if (array.length === 1 ) {
+			if (array.length === 1) {
 				frappe.show_alert({
-				message:__('Matched Item already Selected'),
-				indicator:'green'
+					message: __('Matched Item already Selected'),
+					indicator: 'green'
 				}, 5);
 			}
 
 			else if (array.length > 1) {
-			dialog_field.push(
-				{
-					fieldtype: "Link",
-					fieldname: "select_item",
-					label: __("Items"),
-					options: "Item",
-					read_only: 0,
-					get_query: () => {
-						return{
-							filters: {
-								"name": ["in", array],
+				dialog_field.push(
+					{
+						fieldtype: "Link",
+						fieldname: "select_item",
+						label: __("Items"),
+						options: "Item",
+						read_only: 0,
+						get_query: () => {
+							return {
+								filters: {
+									"name": ["in", array],
+								}
 							}
 						}
-					}
-				},
-			)
-		}	
+					},
+				)
+			}
 		}
-		if (dialog_field.length > 0){
+		if (dialog_field.length > 0) {
 			dialog = new frappe.ui.Dialog({
 				title: __("Select Item"),
 				fields: dialog_field,
 				primary_action_label: 'Get Items',
 				primary_action: function (values) {
 					console.log(values, "-----values")
-					if (values){
+					if (values) {
 						let selected_item = values.select_item;
 						frappe.model.set_value(cdt, cdn, 'matched_item', selected_item);
 						frappe.model.set_value(cdt, cdn, 'status', 'Match');
@@ -116,7 +130,7 @@ frappe.ui.form.on("BOM Item Details MW", {
 					dialog.hide();
 				}
 			})
-		dialog.show()
+			dialog.show()
 		}
 	}
 })
