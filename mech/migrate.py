@@ -327,6 +327,48 @@ def create_custom_fields_in_core_doctype():
 
 		"BOM": [
 			{
+				"fieldname": "custom_column_break_for_approved_by_fields",
+				"fieldtype": "Column Break",
+				"insert_after": "uom",
+				"is_custom_field": 1,
+				"is_system_generated": 0
+			},
+			{
+				"fieldname": "custom_approved_by",
+				"fieldtype": "Link",
+				"label": "Approved By",
+				"options": "User",
+				"insert_after": "custom_column_break_for_approved_by_fields",
+				"is_custom_field": 1,
+				"is_system_generated": 0,
+				"allow_on_submit": 1
+			},
+			{
+				"fieldname": "custom_approved_on",
+				"fieldtype": "Date",
+				"label": "Approved On",
+				"insert_after": "custom_approved_by",
+				"is_custom_field": 1,
+				"is_system_generated": 0,
+				"allow_on_submit": 1
+			},
+			{
+				"fieldname": "custom_section_break_reason",
+				"fieldtype": "Section Break",
+				"insert_after": "custom_approved_on",
+				"is_custom_field": 1,
+				"is_system_generated": 0
+			},
+			{
+				"fieldname": "custom_reason_for_bom_changes",
+				"fieldtype": "Small Text",
+				"label": "Reason for BOM Changes",
+				"insert_after": "custom_section_break_reason",
+				"is_custom_field": 1,
+				"is_system_generated": 0,
+				"allow_on_submit": 1
+			},
+			{
 				"fieldname": "custom_gad_mfg",
 				"fieldtype": "Select",
 				"label": "GAD/MFG",
