@@ -476,3 +476,7 @@ def create_subcontract_bom_from_material_request(self, method):
 					frappe.msgprint(_("Subcontracting BOM {0} Created.".format(get_link_to_form("Subcontracting BOM",sbom.name))))
 				else:
 					frappe.msgprint(_("Subcontracting BOM for the Finished Good {0} is already Exists".format(row.item_code)))
+
+def remove_bom_creator_ref_from_bom_uploader(self, method):
+	if self.custom_bom_uploader_ref:
+		frappe.db.set_value("BOM Uploader MW", self.custom_bom_uploader_ref, "bom_creator_ref", None, update_modified=True)

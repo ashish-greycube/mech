@@ -8,13 +8,12 @@
  "field_order": [
   "row_no",
   "parent_fg",
-  "bom_item_code",
+  "sub_assembly_item",
   "qty",
   "column_break_zolz",
   "sr_no",
   "description",
   "user_input",
-  "sub_assembly_item",
   "section_break_kkse",
   "material_type",
   "length",
@@ -26,13 +25,12 @@
   "section_break_ulwi",
   "gad_mfg",
   "section_break_ubxo",
-  "status",
   "choose_item",
+  "status",
   "column_break_yarl",
   "is_bought_out",
   "create_subassembly_item",
   "section_break_dqng",
-  "item_level",
   "is_leaf_item",
   "column_break_dsji",
   "level",
@@ -47,13 +45,14 @@
  ],
  "fields": [
   {
+   "columns": 1,
    "fieldname": "row_no",
    "fieldtype": "Data",
    "label": "Row No",
    "read_only": 1
   },
   {
-   "columns": 1,
+   "columns": 2,
    "fieldname": "parent_fg",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -77,13 +76,12 @@
    "read_only": 1
   },
   {
-   "columns": 1,
+   "columns": 3,
    "fieldname": "material_type",
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Material Type",
-   "options": "Material Type MW",
-   "read_only": 1
+   "options": "Material Type MW"
   },
   {
    "columns": 1,
@@ -97,22 +95,14 @@
   {
    "fieldname": "gad_mfg",
    "fieldtype": "Data",
-   "label": "GAD/MFG",
-   "read_only": 1
+   "label": "GAD/MFG"
   },
   {
-   "columns": 1,
+   "columns": 3,
    "fieldname": "choose_item",
    "fieldtype": "Button",
    "in_list_view": 1,
    "label": "Choose Item"
-  },
-  {
-   "columns": 1,
-   "fieldname": "bom_item_code",
-   "fieldtype": "Data",
-   "label": "BOM Item Code",
-   "read_only": 1
   },
   {
    "fieldname": "section_break_kkse",
@@ -148,7 +138,7 @@
    "fieldtype": "Column Break"
   },
   {
-   "columns": 1,
+   "columns": 3,
    "fieldname": "matched_item",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -157,17 +147,9 @@
    "read_only": 1
   },
   {
-   "fieldname": "item_level",
-   "fieldtype": "Select",
-   "hidden": 1,
-   "label": "Item Level",
-   "read_only": 1
-  },
-  {
    "default": "0",
    "fieldname": "is_leaf_item",
    "fieldtype": "Check",
-   "hidden": 1,
    "label": "Is Leaf Item",
    "read_only": 1
   },
@@ -175,39 +157,34 @@
    "fieldname": "length",
    "fieldtype": "Float",
    "label": "Length",
-   "precision": "2",
-   "read_only": 1
+   "precision": "2"
   },
   {
    "fieldname": "thickness",
    "fieldtype": "Float",
    "label": "Thickness",
-   "precision": "2",
-   "read_only": 1
+   "precision": "2"
   },
   {
    "fieldname": "width",
    "fieldtype": "Float",
    "label": "Width",
-   "precision": "2",
-   "read_only": 1
+   "precision": "2"
   },
   {
    "fieldname": "od",
    "fieldtype": "Float",
    "label": "OD",
-   "precision": "2",
-   "read_only": 1
+   "precision": "2"
   },
   {
    "fieldname": "id",
    "fieldtype": "Float",
    "label": "ID",
-   "precision": "2",
-   "read_only": 1
+   "precision": "2"
   },
   {
-   "columns": 1,
+   "columns": 2,
    "fieldname": "status",
    "fieldtype": "Autocomplete",
    "in_list_view": 1,
@@ -216,13 +193,16 @@
    "read_only": 1
   },
   {
+   "columns": 2,
    "default": "No",
    "fieldname": "is_bought_out",
    "fieldtype": "Select",
    "label": "Is Bought Out?",
-   "options": "Yes\nNo"
+   "options": "Yes\nNo",
+   "read_only": 1
   },
   {
+   "columns": 2,
    "fieldname": "raw_material_weight",
    "fieldtype": "Float",
    "label": "Raw Material Weight",
@@ -230,8 +210,10 @@
    "read_only": 1
   },
   {
+   "columns": 3,
    "fieldname": "sub_assembly_item",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Sub Assembly Item",
    "read_only": 1
   },
@@ -268,17 +250,18 @@
    "read_only": 1
   },
   {
+   "columns": 2,
    "default": "Yes",
    "fieldname": "create_subassembly_item",
    "fieldtype": "Select",
    "label": "Create Subassembly Item",
-   "options": "Yes\nNo"
+   "options": "Yes\nNo",
+   "read_only": 1
   },
   {
    "fieldname": "level",
    "fieldtype": "Int",
-   "hidden": 1,
-   "label": "Level",
+   "label": "At Level",
    "read_only": 1
   },
   {
@@ -295,11 +278,11 @@
    "label": "Drawing Number"
   }
  ],
- "grid_page_length": 500,
+ "grid_page_length": 20,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-07-31 13:36:20.701656",
+ "modified": "2026-08-04 12:42:27.969690",
  "modified_by": "Administrator",
  "module": "Mech",
  "name": "BOM Item Details MW",

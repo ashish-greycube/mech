@@ -19,9 +19,12 @@
   "bom_creator_ref",
   "section_break_bnkd",
   "download_formatted_excel",
+  "download_bom_item_details_excel",
   "section_break_drpb",
   "import_excel",
   "read_excel",
+  "section_break_tree_preview",
+  "bom_tree_preview",
   "section_break_jsuv",
   "bom_item_details_mw"
  ],
@@ -55,7 +58,7 @@
    "fieldtype": "Section Break"
   },
   {
-   "depends_on": "eval:doc.dam_code && !doc.__islocal",
+   "depends_on": "eval:doc.dam_code && !doc.__islocal && doc.bom_item_details_mw && doc.bom_item_details_mw.length == 0",
    "fieldname": "download_formatted_excel",
    "fieldtype": "Button",
    "label": "Download Formatted Excel",
@@ -113,6 +116,17 @@
    "options": "read_excel"
   },
   {
+   "depends_on": "eval:doc.bom_item_details_mw && doc.bom_item_details_mw.length > 0",
+   "fieldname": "section_break_tree_preview",
+   "fieldtype": "Section Break",
+   "label": "Tree Preview"
+  },
+  {
+   "fieldname": "bom_tree_preview",
+   "fieldtype": "HTML",
+   "label": "Tree Preview"
+  },
+  {
    "fieldname": "section_break_jsuv",
    "fieldtype": "Section Break"
   },
@@ -130,6 +144,12 @@
    "hidden": 1,
    "label": "Bom Creator",
    "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.bom_item_details_mw && doc.bom_item_details_mw.length > 0",
+   "fieldname": "download_bom_item_details_excel",
+   "fieldtype": "Button",
+   "label": "Download BOM Item Details Excel"
   }
  ],
  "grid_page_length": 50,
@@ -140,7 +160,7 @@
    "link_fieldname": "custom_bom_uploader_ref"
   }
  ],
- "modified": "2026-07-31 12:11:44.347240",
+ "modified": "2026-08-03 15:08:53.944284",
  "modified_by": "Administrator",
  "module": "Mech",
  "name": "BOM Uploader MW",

@@ -160,7 +160,9 @@ doc_events = {
     "BOM Creator":{
         "validate": ["mech.api.fill_operation_table_from_excel_data",
                      "mech.api.clear_operation_table_if_not_attached_excel",
-                     "mech.api.validate_operation_excel"]
+                     "mech.api.validate_operation_excel"],
+        "on_cancel": "mech.api.remove_bom_creator_ref_from_bom_uploader",
+        "on_trash": "mech.api.remove_bom_creator_ref_from_bom_uploader"
     },
     "BOM":{
         "validate": ["mech.api.add_operation_from_bom_creator",
