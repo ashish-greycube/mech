@@ -131,7 +131,7 @@ class BOMUploaderMW(Document):
 			self.validate_excel_columns(table_header_col)
 			self.check_in_excel_all_matrial_type_exists(excel_table_data)
 			self.validate_mandatory_fields_and_matched_item_exist_in_excel(excel_table_data, leaf_items)
-			self.validate_naming_and_sr_no_of_items(excel_table_data, leaf_items)
+			# self.validate_naming_and_sr_no_of_items(excel_table_data, leaf_items)
 			self.fill_bom_item_details_table(excel_table_data, item_levels, leaf_items)
 
 	# ----------------------------------------------------------------
@@ -180,12 +180,17 @@ class BOMUploaderMW(Document):
 	# ----------------------------------------------------------------
 	def build_item_tree_info(self, excel_table_data):
 		"""
-		Positional (depth-first, pre-order) parent resolution. Assumes each
-		row's children are entered immediately below it, before any sibling/
-		uncle branch starts. This lets the same Sub Assembly Item code be
-		reused as a placement under different parents at different levels
-		(e.g. a shared sub-assembly used in more than one place in the tree)
-		without the levels clashing.
+		Parent resolution via a fast-path stack plus a permanent registry.
+
+		The stack tracks the currently active depth-first path (fast lookup,
+		and the basis for cycle detection). The registry (code_levels) records
+		the level of every non-leaf row the moment it's declared and never
+		forgets it, even after the stack moves on. This means a row's children
+		don't need to be entered immediately below it - e.g. sibling
+		sub-assemblies (all children of the same parent) can be listed one
+		after another first, with each one's own children filled in later,
+		out of strict depth-first order. A Parent FG only fails validation if
+		it truly never appeared as a Sub Assembly Item in any earlier row.
 
 		Leaf vs. non-leaf is decided by whether a row's own code is actually
 		referenced as Parent FG by some other row — NOT by whether Sub
@@ -205,7 +210,9 @@ class BOMUploaderMW(Document):
 
 		item_levels = {}
 		leaf_items, non_leaf_items = [], []
-		stack = []  # [(code, level), ...] currently open ancestors
+		stack = []  # [(code, level), ...] currently active depth-first path
+		code_levels = {}  # code -> level, every non-leaf row ever declared
+		code_parent = {}  # code -> its parent_fg, for indirect cycle detection
 
 		for row in excel_table_data:
 			parent_fg = row.get("parent_fg")
@@ -214,28 +221,39 @@ class BOMUploaderMW(Document):
 			is_non_leaf = bool(own_code) and own_code in parent_codes_referenced
 
 			if parent_fg == self.dam_code:
-				# Back to the FG root - close every previously open branch
 				stack = []
 				level = 1
 			else:
 				while stack and stack[-1][0] != parent_fg:
 					stack.pop()
-				if not stack:
+				if stack:
+					level = stack[-1][1] + 1
+				elif parent_fg in code_levels:
+					level = code_levels[parent_fg] + 1
+				else:
 					frappe.throw(
 						_("In Excel Line No - {0}, Parent FG {1} is not correct. It should either be the Parent FG Item {2} or a Sub Assembly Item that was entered in an earlier row above this one.").format(
 							idx, parent_fg, self.dam_code
 						)
 					)
-				level = stack[-1][1] + 1
 
 			item_levels[idx] = level
 
 			if is_non_leaf:
-				if any(code == own_code for code, _ in stack):
+				is_cycle = own_code == parent_fg
+				ancestor = parent_fg
+				while not is_cycle and ancestor and ancestor != self.dam_code:
+					if ancestor == own_code:
+						is_cycle = True
+						break
+					ancestor = code_parent.get(ancestor)
+				if is_cycle:
 					frappe.throw(
 						_("In Excel Line No - {0}, Item {1} cannot be a Sub Assembly of itself. Please check the Parent FG and Sub Assembly Item columns above this row.").format(idx, own_code)
 					)
 				stack.append((own_code, level))
+				code_levels[own_code] = level
+				code_parent[own_code] = parent_fg
 				non_leaf_items.append(row)
 			else:
 				leaf_items.append(row)
@@ -757,12 +775,15 @@ class BOMUploaderMW(Document):
 			bom.custom_bom_uploader_ref = self.name
 			bom.project = self.project
 
-			# Positional (depth-first, pre-order) parent resolution — mirrors
-			# build_item_tree_info. A plain DB lookup by Sub Assembly Item code
-			# can't disambiguate a reused code (the same sub-assembly placed
-			# under multiple different parents), so we walk the rows in order
-			# and track which ancestor is currently open instead.
-			stack = []  # [(sub_assembly_item, bom.items row idx), ...] currently open ancestors
+			# Parent resolution — mirrors build_item_tree_info. The stack is a
+			# fast-path lookup of the currently active depth-first ancestors;
+			# code_idx is a permanent registry of every non-leaf row's index,
+			# used as a fallback so sibling sub-assemblies can be entered
+			# back-to-back (children filled in later, out of strict
+			# depth-first order) without losing track of an already-closed
+			# sibling.
+			stack = []  # [(sub_assembly_item, bom.items row idx), ...] currently active ancestors
+			code_idx = {}  # sub_assembly_item -> bom.items row idx, every non-leaf row ever seen
 
 			for row in self.bom_item_details_mw:
 				item = bom.append("items", {})
@@ -773,11 +794,14 @@ class BOMUploaderMW(Document):
 				else:
 					while stack and stack[-1][0] != row.parent_fg:
 						stack.pop()
-					if not stack:
+					if stack:
+						parent_idx = stack[-1][1]
+					elif row.parent_fg in code_idx:
+						parent_idx = code_idx[row.parent_fg]
+					else:
 						frappe.throw(
 							_("Row No {0}: Parent FG {1} not found while creating BOM Creator").format(row.row_no, row.parent_fg)
 						)
-					parent_idx = stack[-1][1]
 
 				item.fg_item = row.parent_fg
 				item.qty = row.qty
@@ -811,6 +835,7 @@ class BOMUploaderMW(Document):
 				item.uom = frappe.db.get_value("Item", item.item_code, "stock_uom")
 				if not row.is_leaf_item:
 					stack.append((row.sub_assembly_item, item.idx))
+					code_idx[row.sub_assembly_item] = item.idx
 
 			bom.save(ignore_permissions=True)
 			self.db_set("bom_creator_ref", bom.name)

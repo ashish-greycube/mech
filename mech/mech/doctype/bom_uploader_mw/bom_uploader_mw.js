@@ -94,6 +94,7 @@ function sync_and_build_tree(frm) {
 	const root_children = [];
 	const unassigned = [];
 	const stack = [];
+	const code_rows = {}; // sub_assembly_item -> row, every non-leaf row ever seen (survives sibling resets, so a row's children can be entered later, out of strict depth-first order)
 
 	rows.forEach((row) => {
 		let parent_row = null;
@@ -108,6 +109,8 @@ function sync_and_build_tree(frm) {
 			}
 			if (stack.length) {
 				parent_row = stack[stack.length - 1].row;
+			} else if (code_rows[row.parent_fg]) {
+				parent_row = code_rows[row.parent_fg];
 			}
 		}
 
@@ -125,6 +128,7 @@ function sync_and_build_tree(frm) {
 
 		if (row.sub_assembly_item) {
 			stack.push({ code: row.sub_assembly_item, row: row });
+			code_rows[row.sub_assembly_item] = row;
 		}
 	});
 
@@ -759,12 +763,13 @@ function open_choose_item_dialog(frm, row) {
 	let dialog = undefined
 	const dialog_field = []
 
-	if (row.status == "Not Found" || (row.status == "Match" && (!row.matched_item_list || row.matched_item_list == ''))){
-		let sub_assembly_item_group = ""
+	let sub_assembly_item_group = ""
 		frappe.db.get_single_value('Mechwell Setting MW', 'default_item_group_for_sub_assembly')
 			.then(item_group => {
 				sub_assembly_item_group = item_group
 			})
+
+	if (row.status == "Not Found" || (row.status == "Match" && (!row.matched_item_list || row.matched_item_list == ''))){
 
 		dialog_field.push(
 			{
@@ -790,10 +795,27 @@ function open_choose_item_dialog(frm, row) {
 		let array = str.split(",").map(s => s.trim().replace(/'/g, ''));
 
 		if (array.length === 1 ) {
-			frappe.show_alert({
-			message:__('Matched Item already Selected'),
-			indicator:'green'
-			}, 5);
+			dialog_field.push(
+			{
+				fieldtype: "Link",
+				fieldname: "select_item",
+				label: __("Items"),
+				options: "Item",
+				read_only: 0,
+				get_query: () => {
+					return{
+						filters: {
+							"item_group": ["!=", sub_assembly_item_group],
+							"custom_material_type": ["=", row.material_type]
+						}
+					}
+				}
+			},
+		)
+			// frappe.show_alert({
+			// message:__('Matched Item already Selected'),
+			// indicator:'green'
+			// }, 5);
 		}
 
 		else if (array.length > 1) {
