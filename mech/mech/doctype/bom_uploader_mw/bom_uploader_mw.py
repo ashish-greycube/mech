@@ -251,6 +251,12 @@ class BOMUploaderMW(Document):
 					frappe.throw(
 						_("In Excel Line No - {0}, Item {1} cannot be a Sub Assembly of itself. Please check the Parent FG and Sub Assembly Item columns above this row.").format(idx, own_code)
 					)
+				if own_code in code_levels and (code_levels[own_code] == 1) != (level == 1):
+					frappe.throw(
+						_("In Excel Line No. - {0}, <b>{1}</b> is already used as a top-level Sub Assembly under Parent FG <b>{2}</b>. It cannot be used again as a Sub Assembly under another Sub Assembly.").format(
+							idx, own_code, self.dam_code
+						)
+					)
 				stack.append((own_code, level))
 				code_levels[own_code] = level
 				code_parent[own_code] = parent_fg

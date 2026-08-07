@@ -7,6 +7,7 @@ frappe.ui.form.on("BOM Uploader MW", {
 		$('.grid-remove-rows').hide()
 		$('.grid-download').hide()
 		$('.grid-upload').hide()
+		$('.grid-add-multiple-rows').hide()
 		hideGridRowFormButtons()
 		if (frm.is_new()) {
 			frm.dashboard.add_comment(__("<b>Please save the form to download excel for import</b>"), "blue", true);
@@ -25,6 +26,9 @@ frappe.ui.form.on("BOM Uploader MW", {
 		}
 
 		render_bom_tree(frm);
+	},
+	after_save(frm) {
+		frm.reload_doc();
 	},
 	dam_code(frm) {
 		if (frm.doc.dam_code) {
@@ -763,6 +767,53 @@ function open_choose_item_dialog(frm, row) {
 	let dialog = undefined
 	const dialog_field = []
 
+	attribute_fields = [
+			{
+				fieldtype: "Data",
+				fieldname: "material_type",
+				label: "Material Type",
+				read_only: 1,
+				default: row.material_type || ""
+			},
+			{
+				fieldtype: "Data",
+				fieldname: "length",
+				label: "Length",
+				read_only: 1,
+				default: row.length || ""
+			},
+			{
+				fieldtype: "Data",
+				fieldname: "width",
+				label: "Width",
+				read_only: 1,
+				default: row.width || ""
+			},
+			{ fieldtype: "Column Break" },
+			{
+				fieldtype: "Data",
+				fieldname: "thickness",
+				label: "Thickness",
+				read_only: 1,
+				default: row.thickness || ""
+			},
+			{
+				fieldtype: "Data",
+				fieldname: "od",
+				label: "OD",
+				read_only: 1,
+				default: row.od || ""
+			},
+			{
+				fieldtype: "Data",
+				fieldname: "id",
+				label: "ID",
+				read_only: 1,
+				default: row.id || ""
+			},
+			{ fieldtype: "Section Break" },
+		]
+
 	let sub_assembly_item_group = ""
 		frappe.db.get_single_value('Mechwell Setting MW', 'default_item_group_for_sub_assembly')
 			.then(item_group => {
@@ -770,7 +821,7 @@ function open_choose_item_dialog(frm, row) {
 			})
 
 	if (row.status == "Not Found" || (row.status == "Match" && (!row.matched_item_list || row.matched_item_list == ''))){
-
+		dialog_field.push(...attribute_fields)
 		dialog_field.push(
 			{
 				fieldtype: "Link",
@@ -787,6 +838,7 @@ function open_choose_item_dialog(frm, row) {
 					}
 				}
 			},
+			{ fieldtype: "Column Break" },
 		)
 	}
 
@@ -795,6 +847,7 @@ function open_choose_item_dialog(frm, row) {
 		let array = str.split(",").map(s => s.trim().replace(/'/g, ''));
 
 		if (array.length === 1 ) {
+			dialog_field.push(...attribute_fields)
 			dialog_field.push(
 			{
 				fieldtype: "Link",
@@ -811,6 +864,7 @@ function open_choose_item_dialog(frm, row) {
 					}
 				}
 			},
+			{ fieldtype: "Column Break" },
 		)
 			// frappe.show_alert({
 			// message:__('Matched Item already Selected'),
@@ -819,6 +873,7 @@ function open_choose_item_dialog(frm, row) {
 		}
 
 		else if (array.length > 1) {
+		dialog_field.push(...attribute_fields)
 		dialog_field.push(
 			{
 				fieldtype: "Link",
@@ -834,6 +889,7 @@ function open_choose_item_dialog(frm, row) {
 					}
 				}
 			},
+			{ fieldtype: "Column Break" },
 		)
 	}
 	}
